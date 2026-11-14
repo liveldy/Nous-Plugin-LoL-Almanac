@@ -99,8 +99,8 @@ node sdk/pack.mjs .
 
 ### 体积预算
 
-插件包上限 4 MiB。快照压缩后 2.79 MB，base64 进 `dex.js` 是 3.73 MB，其余约 220 KB 是页面、
-字体与 SDK。细节见 `docs/data-model.md`。
+插件包上限 4 MiB。快照压缩后 2.81 MB，base64 进 `dex.js` 是 3.75 MiB，其余约 160 KB 是页面、
+字体与 SDK；`sdk/pack.mjs` 打出的发行包 4,101,436 字节（3.91 MiB）。细节见 `docs/data-model.md`。
 
 ## 开发预览
 

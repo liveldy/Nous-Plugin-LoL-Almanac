@@ -1,0 +1,14 @@
+{
+  "name": "nous-plugin-lol-almanac",
+  "version": "1.0.0",
+  "private": true,
+  "type": "commonjs",
+  "description": "英雄联盟职业选手图鉴 · Nous 插件。ui/ 是随包页面，sdk/ 是公开插件 SDK 的本地副本，tools/ 是数据抓取与打包脚本。",
+  "scripts": {
+    "check": "node sdk/check.mjs .",
+    "pack": "node sdk/pack.mjs .",
+    "dev": "node sdk/dev.mjs .",
+    "build:data": "node tools/build-data.mjs raw build && node tools/pack-data.mjs build/dataset.json ui/data/dex.js",
+    "test": "node --test test/*.test.mjs"
+  }
+}

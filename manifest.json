@@ -1,0 +1,62 @@
+{
+  "id": "app.nous.lol-almanac",
+  "name": "英雄联盟职业选手图鉴",
+  "version": "1.0.0",
+  "api": "1.3",
+  "requiresHost": "1.2.0",
+  "description": "Leaguepedia 全量快照：两万余名英雄联盟职业选手的档案、战队履历、赛事记录、生涯数据、合同与账号，离线秒查。",
+  "author": {
+    "name": "Nelson",
+    "url": "https://github.com/liveldy"
+  },
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "publishedAt": "2026-11-15",
+      "changes": [
+        "首个版本：20,879 名选手的 Players 全字段、113,844 段战队履历、254,361 条赛事出场、15,196 条合同与 14,470 名选手的生涯合计。",
+        "界面全中文：2,336 名选手带中文名（档案里的汉字本名 + 中文维基核对过的译名），国家、赛区、位置、文字系统用中文取值，搜索支持中文名。",
+        "双栏索引与档案：即时全文检索、位置/赛区/国家/状态筛选、虚拟滚动列表、可交叉跳转的战队与赛事。"
+      ]
+    }
+  ],
+  "platforms": [
+    "web",
+    "windows-x64",
+    "android-arm64"
+  ],
+  "permissions": [
+    "storage",
+    "clipboard.write",
+    "external.open"
+  ],
+  "entry": "ui/index.html",
+  "repository": "liveldy/Nous-Plugin-LoL-Almanac",
+  "license": "MIT",
+  "icon": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjYzhhMjRlIiBzdHJva2Utd2lkdGg9IjEuNyIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNNCA0LjZoMTZ2MTQuOEg0eiIvPjxwYXRoIGQ9Ik00IDloMTYiLz48cGF0aCBkPSJNOS4yIDl2MTAuNCIvPjxwYXRoIGQ9Ik0xMi40IDEyLjRoNC44Ii8+PHBhdGggZD0iTTEyLjQgMTUuNGgzIi8+PC9zdmc+",
+  "navigation": [
+    {
+      "id": "dex",
+      "label": "选手图鉴",
+      "icon": "scan-line"
+    }
+  ],
+  "defaultView": "dex",
+  "requiredMethods": [],
+  "optionalMethods": [
+    "storage.get",
+    "storage.set",
+    "clipboard.write",
+    "external.open"
+  ],
+  "resources": [
+    "ui/index.html",
+    "ui/style.css",
+    "ui/app.js",
+    "ui/nous-plugin.js",
+    "ui/data/dex.js",
+    "ui/fonts/nr-500-latin.woff2",
+    "ui/fonts/nr-500-latin-ext.woff2",
+    "ui/fonts/OFL.txt"
+  ]
+}

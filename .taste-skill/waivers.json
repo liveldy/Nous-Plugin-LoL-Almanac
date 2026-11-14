@@ -1,0 +1,27 @@
+[
+  {
+    "check": "field-label",
+    "target": "input#q",
+    "reason": "搜索框由放大镜图标、占位文案和 / 快捷键说明用途，再加一个可见标签就是重复的辅助说明；控件本身有 aria-label，读屏可读"
+  },
+  {
+    "check": "hidden-content",
+    "target": "span.r-sub > i",
+    "reason": "被遮罩收掉的是超长国家名的尾部（text-overflow: ellipsis），行内其余信息完整，reduced motion 下没有任何内容被藏起来"
+  },
+  {
+    "check": "action-repeat",
+    "target": "span.tl-team:nth-of-type(2) > button",
+    "reason": "同一战队在一屏出现三次是数据本身：同一选手在这支队伍有三段不相连的履历，不是同一个动作重复三次"
+  },
+  {
+    "check": "section-air",
+    "target": "div.band",
+    "reason": "十格数据带上下那两条细线是这个表格式档案的结构线，去掉之后数据带与下面的履历会糊成一片"
+  },
+  {
+    "check": "row-gap",
+    "target": "label.select:nth-of-type(5)",
+    "reason": "390px 下筛选是两列排法，排序作为第五项独占整行，这是布局本身的分组而不是漏填一格"
+  }
+]

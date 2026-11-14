@@ -1,0 +1,8 @@
+# 抓下来的原始表、构建中间产物与本地检查用的浏览器配置
+raw/
+build/
+node_modules/
+.taste-skill/*
+!.taste-skill/waivers.json
+tools/.taste-skill/
+shots/tiles/

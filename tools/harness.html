@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>图鉴 · 本机检查台</title>
+<meta name="page-type" content="software">
+<meta name="site-kind" content="software">
+<link rel="stylesheet" href="../ui/style.css">
+</head>
+<body>
+<div class="boot" id="boot"><div class="boot-inner"><span class="boot-mark">图鉴</span>
+<p class="boot-line" id="bootLine">正在展开档案…</p><div class="boot-bar"><i id="bootBar"></i></div></div></div>
+<header class="masthead" data-enter>
+  <div class="brand"><h1 class="brand-name">英雄联盟职业选手<i>图鉴</i></h1></div>
+  <div class="brand-meta"><span id="snapCount" class="mono"></span><span id="snapDate" class="mono dim"></span></div>
+</header>
+<main class="dex" id="dex">
+  <section class="index" aria-label="选手索引">
+    <div class="searchfield">
+      <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.6" cy="8.6" r="5.6"/><path d="M12.9 12.9 17 17"/></svg>
+      <input id="q" type="search" autocomplete="off" spellcheck="false" placeholder="搜索选手、姓名、曾用名" aria-label="搜索选手">
+      <kbd>/</kbd>
+    </div>
+    <div class="filters">
+      <label class="select"><span class="visually-hidden">位置</span><select id="fRole"><option value="">全部位置</option></select></label>
+      <label class="select"><span class="visually-hidden">赛区</span><select id="fRegion"><option value="">全部赛区</option></select></label>
+      <label class="select"><span class="visually-hidden">国家或地区</span><select id="fCountry"><option value="">全部国家</option></select></label>
+      <label class="select"><span class="visually-hidden">状态</span><select id="fStatus"><option value="">全部状态</option><option value="active">现役</option><option value="retired">退役</option><option value="other">转项目</option></select></label>
+      <label class="select"><span class="visually-hidden">排序</span><select id="fSort"><option value="name">按名字</option><option value="games">按出场</option><option value="recent">按最近比赛</option><option value="debut">按出道</option></select></label>
+    </div>
+    <div class="crossbar" id="crossbar" hidden></div>
+    <div class="listhead"><span id="resultCount">—</span><span id="activeCount" class="dim"></span></div>
+    <div class="list" id="list" role="listbox" aria-label="选手列表" tabindex="0"><div class="list-inner" id="listInner"></div></div>
+    <p class="source">数据 Leaguepedia · Cargo API 快照 · CC BY-SA 3.0</p>
+  </section>
+  <section class="dossier" id="dossier" aria-label="选手档案" tabindex="-1"></section>
+</main>
+<div class="statusline" id="statusline" hidden role="status"></div>
+<script>
+  // 仅用于本机检查：模拟宿主的最小接口.
+  const theme = new URLSearchParams(location.search).get('theme');
+  if (theme) document.documentElement.dataset.theme = theme;
+  window.NousPlugin = {
+    ready: Promise.resolve({ theme: theme || 'light' }),
+    supports: () => false,
+    request: () => Promise.reject(new Error('preview')),
+    on: () => () => {},
+  };
+</script>
+<script src="../ui/data/dex.js"></script>
+<script src="../ui/app.js"></script>
+</body>
+</html>

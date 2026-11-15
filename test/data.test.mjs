@@ -190,6 +190,20 @@ test('赛事名与联赛名已中文化，俱乐部名保持原文', () => {
   }
 });
 
+test('宿主组装页面时把两张精灵图内联成 data URL', async () => {
+  const { collectBundle } = await import('../sdk/project.mjs');
+  const { pluginDocument } = await import('../sdk/protocol.mjs');
+  const bundle = await collectBundle(root);
+  for (const png of ['ui/icons/champions.png', 'ui/icons/teams.png']) {
+    assert.match(bundle.files[png] || '', /^data:image\/png;base64,/, png + ' 没有作为资源打包');
+  }
+  const doc = pluginDocument(bundle, 'testnonce');
+  const pngs = (doc.match(/data:image\/png;base64,/g) || []).length;
+  assert.equal(pngs, 2, '内联进 CSS 的精灵图数量不对: ' + pngs);
+  assert.ok(!/url\(["']?icons\//.test(doc), 'CSS 里还留着没内联的图片地址');
+  assert.match(doc, /connect-src 'none'/);
+});
+
 test('插件包体积在 4 MiB 之内', () => {
   const manifest = JSON.parse(fs.readFileSync(path.join(root, 'manifest.json'), 'utf8'));
   let bytes = 0;

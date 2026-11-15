@@ -6,7 +6,7 @@ import path from 'node:path';
 
 const root = path.resolve(process.argv[2] || '.');
 const port = Number(process.env.PORT || 8090);
-const types = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.woff2': 'font/woff2', '.png': 'image/png', '.json': 'application/json' };
+const types = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.woff2': 'font/woff2', '.png': 'image/png', '.webp': 'image/webp', '.json': 'application/json' };
 
 http.createServer((req, res) => {
   const url = new URL(req.url, 'http://127.0.0.1');

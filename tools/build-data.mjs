@@ -69,7 +69,7 @@ const cleanText = (v) => String(v || '')
   .replace(/&#?\w+;/g, '')
   .replace(/\s+/g, ' ')
   .trim();
-const CLEAN = new Set(['SoloqueueIds', 'ContractText']);
+const CLEAN = new Set(['ContractText']);
 
 const DS = [''];
 const dsIndex = new Map([['', 0]]);
@@ -147,7 +147,9 @@ const localizeEvent = (v) => {
     .replace(/\bRounds? (\d+)([-–]\d+)?\b/gi, (m, a, b) => '第 ' + a + (b || '') + ' 轮')
     .replace(/\bRound ([IVX]+)\b/g, '第 $1 轮');
   for (const [rx, to] of PHRASES) s = s.replace(rx, to);
-  return s.replace(/([\u4e00-\u9fa5])\s+(?=[\u4e00-\u9fa5])/g, '$1').replace(/\s{2,}/g, ' ').trim();
+  // 逐词替换会拼出「锦标赛秋季赛赛季」这种重复，收一下尾
+  return s.replace(/赛赛季|赛赛/g, '赛')
+    .replace(/([\u4e00-\u9fa5])\s+(?=[\u4e00-\u9fa5])/g, '$1').replace(/\s{2,}/g, ' ').trim();
 };
 // 中文名：记录本身用汉字写的，就是选手的中文名；其余来自 tools/fetch_zh_names.py 抓的维基条目
 const ZH = has('ZhNames') ? (read('ZhNames').names || {}) : {};
@@ -163,7 +165,6 @@ const SCALARS = {
   Country: 'dict', Nationality: 'dict', NationalityPrimary: 'dict', Age: 'num', Birthdate: 'date',
   Deathdate: 'date', Residency: 'dict', ResidencyFormer: 'dict', Team: 'team', Team2: 'team',
   Role: 'dict', Contract: 'date', ContractText: 'dict',
-  SoloqueueIds: 'raw',
   TeamLast: 'team', RoleLast: 'dict', NameZh: 'dict',
 };
 const URL_FIELDS = new Set(['Askfm', 'Bluesky', 'Discord', 'Facebook', 'Instagram', 'Lolpros', 'DEEPLOL', 'DPMLOL',
@@ -267,7 +268,7 @@ function makeTable(rows, compare, build) {
 }
 
 /* tenures */
-let tenures = { pd: [], t: [], j: [], l: [], ce: [], nx: [], cur: [], n: 0 };
+let tenures = { pd: [], t: [], j: [], l: [], cur: [], n: 0 };
 if (has('Tenures')) {
   const rows = [];
   for (const r of read('Tenures')) {
@@ -275,14 +276,12 @@ if (has('Tenures')) {
     if (p < 0) continue;
     rows.push({
       p, t: ti(r.Team), j: dateEnc(r.DateJoin), l: dateEnc(r.DateLeave),
-      ce: r.ContractEnd ? si(r.ContractEnd) : 0,
-      nx: (r.NextIsRetired === '1' ? 1 : 0) | (r.NextIsWildrift === '1' ? 2 : 0) | (r.NextIsDeceased === '4' ? 4 : 0),
       cur: r.IsCurrent === '1' ? 1 : 0,
     });
   }
   tenures = makeTable(rows, (a, b) => a.p - b.p || a.j - b.j, (list) => ({
     p: list.map((r) => r.p), t: list.map((r) => r.t), j: list.map((r) => r.j), l: list.map((r) => r.l),
-    ce: list.map((r) => r.ce), nx: list.map((r) => r.nx), cur: list.map((r) => r.cur),
+    cur: list.map((r) => r.cur),
   }));
 }
 
@@ -303,7 +302,10 @@ if (has('Contracts')) {
 /* tournaments */
 const tournNames = [''];
 const tournIndex = new Map([['', 0]]);
-const tourn = { name: [], league: [], region: [], date: [], level: [], prize: [], cur: [], qual: [], play: [], off: [], split: [], n: 0 };
+const tourn = { name: [], league: [], region: [], date: [], qual: [], n: 0 };
+const major = new Set();  // 主流联赛 / 国际赛事：只有它们的名次进荣誉表
+const rawLeague = [];     // 原始 League 取值，只用来判断「是不是主流联赛」
+const playoffIds = new Set();  // IsPlayoffs=1 的赛事：真正的淘汰赛阶段，名次才有分量
 const tournId = (page) => {
   const s = String(page || '').trim();
   if (!s) return 0;
@@ -319,13 +321,9 @@ if (has('Tournaments')) {
     tourn.league[id] = si(tterm('league', r.League));
     tourn.region[id] = si(tterm('region', r.Region));
     tourn.date[id] = dateEnc(r.DateStart || r.Date || r.DateStartFuzzy);
-    tourn.level[id] = si(r.TournamentLevel);
-    tourn.prize[id] = num(String(r.Prizepool || '').replace(/[^\d]/g, ''));
-    tourn.cur[id] = si(r.Currency);
     tourn.qual[id] = r.IsQualifier === '1' ? 1 : 0;
-    tourn.play[id] = r.IsPlayoffs === '1' ? 1 : 0;
-    tourn.off[id] = r.IsOfficial === '1' ? 1 : 0;
-    tourn.split[id] = si(r.Split);
+    rawLeague[id] = String(r.League || '').trim();
+    if (r.IsPlayoffs === '1') playoffIds.add(id);
   }
   tourn.n = tournNames.length;
   for (let i = 1; i < tourn.n; i++) {
@@ -334,8 +332,31 @@ if (has('Tournaments')) {
   }
 }
 
+/* 阶段页归一：edition 页面「2024 Season World Championship」底下挂着「/Main Event」「/Play-In」
+   这些阶段页，名次表记在edition 页上、参赛记录常常记在阶段页上。荣誉对齐前把阶段页折回edition 页，
+   否则 2023 年以后的全球总决赛冠军一个都对不上（tp 里全是「/Main Event」）。 */
+const PHASE_PAGE = /^(main event|play-?in( stage)?|group stage|knockout stage|swiss stage|bracket)$/i;
+const canon = new Uint32Array(tournNames.length);
+for (let i = 1; i < tournNames.length; i++) {
+  let page = tournNames[i];
+  let id = i;
+  for (;;) {
+    const cut = page.lastIndexOf('/');
+    if (cut < 0 || !PHASE_PAGE.test(page.slice(cut + 1))) break;
+    const pid = tournIndex.get(page.slice(0, cut));
+    if (!pid) break;
+    page = page.slice(0, cut);
+    id = pid;
+  }
+  canon[i] = id;
+}
+// 荣誉只收「有公认中文名的联赛」（zh-terms 的 league 表）与国际赛事的名次：
+// 全部赛事的名次有 13 万条、要 300 KB 压缩体积，而且大半是边缘赛区、常规赛与线上赛
+for (let i = 1; i < tournNames.length; i++) if (TERMS.league[rawLeague[i]]) major.add(canon[i]);
+
 /* tournament appearances — 资格赛不收录；战队只在与履历推导值不同时才存 */
 let tp = { pd: [], t: [], team: [], n: 0 };
+let tpRows = [];
 if (has('TournamentPlayers')) {
   // 履历按选手建立区间，用来推导赛事期间所属战队
   const byPlayer = new Map();
@@ -369,13 +390,115 @@ if (has('TournamentPlayers')) {
     seen.add(key);
     const derived = teamAt(p, tourn.date[t]);
     const name = String(r.Team || '').trim();
-    rows.push({ p, t, team: derived && name && name !== teams[derived] ? ti(name) : 0 });
+    // `names` 只在这一步用来和名次表对齐，打包前删掉
+    rows.push({
+      p, t, team: derived && name && name !== teams[derived] ? ti(name) : 0,
+      names: [derived ? teams[derived] : '', name].filter(Boolean),
+    });
   }
+  tpRows = rows;
   tp = makeTable(rows, (a, b) => a.p - b.p || a.t - b.t, (list) => ({
     p: list.map((r) => r.p), t: list.map((r) => r.t), team: list.map((r) => r.team),
   }));
   tp.drop = drop;
 }
+
+/* 荣誉 —— 两张 Cargo 表，都以赛事页面为键，和上面的 (选手, 赛事, 战队) 行直接对齐
+   Standings  TournamentResults 的前四名：谁夺冠、谁亚军、谁进四强
+   Awards     IndividualAchievements 的赛季奖项：MVP、最佳阵容、最佳新秀……
+   「谁是冠军」是战队成绩，只有选手在该赛事的登记战队与名次行一致时才算到他头上；
+   战队名两边可能写法不同（登记页写 T1、名次行写 T1），所以按名字对，不按履历推导。 */
+let honors = { title: null, award: null, awardNames: [] };
+{
+  // 只有「主流联赛的淘汰赛」与「国际赛事」的名次算荣誉：常规赛第 3 名、资格赛、线上赛
+  // 都不是奖杯，而且全部收进来要 13 万条、300 KB 压缩体积
+  const INTL = new Set(['World Championship', 'Mid-Season Invitational', 'Rift Rivals', 'All-Star']);
+  const isIntl = (id) => INTL.has(rawLeague[id]);
+  const worthy = (id) => major.has(canon[id]) === false ? false
+    : (isIntl(canon[id]) || isIntl(id) || playoffIds.has(canon[id]) || playoffIds.has(id));
+
+  const place = new Map();  // "<赛事下标>|<战队名>" -> 最好名次（1..4）
+  let skipped = 0;
+  if (has('Standings')) {
+    for (const r of read('Standings')) {
+      const raw = tournIndex.get(String(r.OverviewPage || '').trim());
+      if (!raw || tourn.qual[raw] === 1) continue;
+      const t = canon[raw];
+      if (!worthy(raw)) { skipped++; continue; }
+      const n = num(r['Place Number']);
+      const team = String(r.Team || '').trim();
+      if (!n || n > 4 || !team) continue;
+      const key = t + '|' + team;
+      const prev = place.get(key);
+      if (prev === undefined || n < prev) place.set(key, n);
+    }
+  }
+  // tp 的行记在阶段页上，对齐前同样折回 edition 页；同一届赛事只留一行
+  const titleRows = [];
+  const seenTitle = new Set();
+  for (const row of tpRows) {
+    const t = canon[row.t];
+    let best = 0;
+    for (const name of row.names) {
+      const n = place.get(t + '|' + name);
+      if (n && (!best || n < best)) best = n;
+    }
+    if (!best) continue;
+    const key = row.p + '|' + t;
+    if (seenTitle.has(key)) continue;
+    seenTitle.add(key);
+    titleRows.push({ p: row.p, t, dt: tourn.date[t] || 0, pl: best });
+  }
+
+  // 奖项：Display 按 zh-terms.json 的 award 表换中文，表外的保持原文（构建结束会打印）
+  const awardNames = [];
+  const awardIdx = new Map();
+  const ai = (label) => {
+    let i = awardIdx.get(label);
+    if (i === undefined) { i = awardNames.length; awardNames.push(label); awardIdx.set(label, i); }
+    return i;
+  };
+  const awardRows = [];
+  const awardMissing = new Map();
+  if (has('Awards')) {
+    const seen = new Set();
+    for (const r of read('Awards')) {
+      const raw = tournIndex.get(String(r.OverviewPage || '').trim()) || 0;
+      if (raw && tourn.qual[raw] === 1) continue;
+      const t = raw ? canon[raw] : 0;
+      const p = resolvePlayer(r.Link || r.Player);
+      if (p < 0) continue;
+      const en = String(r.Display || '').trim();
+      if (!en) continue;
+      let zh = TERMS.award[en];
+      if (!zh) {
+        zh = en;  // 词表外的奖项：原文照录，先记下来
+        awardMissing.set(en, (awardMissing.get(en) || 0) + 1);
+      }
+      const a = ai(zh);
+      const key = p + '|' + t + '|' + a;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      awardRows.push({ p, t, dt: tourn.date[t] || 0, a });
+    }
+  }
+
+  const byPlayer = (a, b) => a.p - b.p || b.dt - a.dt || a.t - b.t;
+  if (titleRows.length) {
+    honors.title = makeTable(titleRows, byPlayer, (list) => ({
+      p: list.map((r) => r.p), t: list.map((r) => r.t), pl: list.map((r) => r.pl),
+    }));
+  }
+  if (awardRows.length) {
+    honors.award = makeTable(awardRows, byPlayer, (list) => ({
+      p: list.map((r) => r.p), t: list.map((r) => r.t), a: list.map((r) => r.a),
+    }));
+  }
+  honors.awardNames = awardNames;
+  honors.awardMissing = [...awardMissing.entries()];
+  honors.skipped = skipped;
+}
+for (const r of tpRows) delete r.names;  // 对齐用的临时字段，不进数据包
 
 /* career stats — 合计之外存场均，数字更小，压缩后更省 */
 let stats = null;
@@ -433,6 +556,23 @@ if (has('ChampionPool')) {
   champs = o;
 }
 
+/* 选手肖像 —— 精灵图由 tools/build-portraits.py 拼好，这里只把「选手页面名 → 图块槽位」记成一列 */
+let portraits = null;
+{
+  const meta = readIcon('portraits.json');
+  if (meta && meta.count && Array.isArray(meta.order)) {
+    const slot = new Array(nP).fill(0);
+    let used = 0;
+    meta.order.forEach((page, i) => {
+      const p = resolvePlayer(page);
+      if (p < 0 || slot[p]) return;
+      slot[p] = i + 1;
+      used++;
+    });
+    portraits = { slot, cols: meta.cols, size: meta.size, count: meta.count, used };
+  }
+}
+
 /* aliases */
 const aliasRows = [...aliasMap.entries()].sort((a, b) => a[1] - b[1] || (a[0] < b[0] ? -1 : 1));
 const aliases = { p: aliasRows.map(([, p]) => p), names: aliasRows.map(([n]) => n), n: aliasRows.length };
@@ -448,6 +588,9 @@ const dataset = {
     zhNames: cols.NameZh.filter((v) => v).length,
     favouriteChampions: fav.n, championshipIcons: champZh.length,
     teamLogos: teams.reduce((acc, name, i) => acc + (i && iconMeta && iconMeta.teamSlots[name] !== undefined ? 1 : 0), 0),
+    titles: honors.title ? honors.title.n : 0,
+    awards: honors.award ? honors.award.n : 0,
+    portraits: portraits ? portraits.used : 0,
   },
   base: BASE_YEAR,
   flags: FLAGS,
@@ -463,12 +606,23 @@ const dataset = {
   champs: champs ? packColumns(champs) : null,
   fav,
   aliases: packColumns(aliases, ['names']),
-  // 精灵图参数 + 槽位表：界面据此给队标和英雄图标定位，不需要再传任何图片文件名
+  // 荣誉：赛事名次（1 冠军 / 2 亚军 / 3-4 四强）与赛季奖项，都按选手索引
+  honors: {
+    title: honors.title ? packColumns(honors.title) : null,
+    award: honors.award ? packColumns(honors.award) : null,
+    awardNames: honors.awardNames,
+  },
+  // 肖像：每人一个槽位（0 = 没有），与下面 icons.player 的网格参数配合定位
+  portraits: portraits ? {
+    slot: packInts(portraits.slot), cols: portraits.cols, size: portraits.size, count: portraits.count,
+  } : null,
+  // 精灵图参数 + 槽位表：界面据此给队标、英雄图标和肖像定位，不需要再传任何图片文件名
   icons: {
     champ: iconMeta && iconMeta.champions
       ? { cols: iconMeta.champions.cols, size: iconMeta.champions.size, count: iconMeta.champions.count } : null,
     team: iconMeta && iconMeta.teams
       ? { cols: iconMeta.teams.cols, size: iconMeta.teams.size, count: iconMeta.teams.count } : null,
+    player: portraits ? { cols: portraits.cols, size: portraits.size, count: portraits.count } : null,
   },
   champZh, champEn, champTitle,
   // 队名 → 队标槽位（0 = 该队没有图标）
@@ -489,7 +643,9 @@ console.log(JSON.stringify({
   gzip: (gz.length / 1048576).toFixed(2) + ' MB',
   base64: (gz.toString('base64').length / 1048576).toFixed(2) + ' MB',
   dropped: tp.drop || null,
+  awardMissing: honors.awardMissing || [],
   unresolvedNames: unresolved.size,
   favMissing: [...favMissing],
   strings: DS.length, teams: teams.length - 1, tournaments: tourn.n,
+  awardNames: honors.awardNames.length,
 }, null, 1));

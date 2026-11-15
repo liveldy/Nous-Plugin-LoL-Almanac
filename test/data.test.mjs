@@ -35,6 +35,8 @@ function expand(D) {
   walk(D.columns); walk(D.tenures); walk(D.contracts); walk(D.tp);
   walk(D.stats); walk(D.aliases); walk(D.champs); walk(D.tourn, ['name']);
   walk(D.fav);
+  if (D.honors) { walk(D.honors.title); walk(D.honors.award); }
+  walk(D.portraits);
   if (D.logo && typeof D.logo.d === 'string') D.logo = dec(D.logo);
   return D;
 }
@@ -190,18 +192,81 @@ test('赛事名与联赛名已中文化，俱乐部名保持原文', () => {
   }
 });
 
-test('宿主组装页面时把两张精灵图内联成 data URL', async () => {
+test('宿主组装页面时把三张精灵图内联成 data URL', async () => {
   const { collectBundle } = await import('../sdk/project.mjs');
   const { pluginDocument } = await import('../sdk/protocol.mjs');
   const bundle = await collectBundle(root);
   for (const png of ['ui/icons/champions.png', 'ui/icons/teams.png']) {
     assert.match(bundle.files[png] || '', /^data:image\/png;base64,/, png + ' 没有作为资源打包');
   }
+  assert.match(bundle.files['ui/icons/players.webp'] || '', /^data:image\/webp;base64,/, '肖像精灵图没有作为资源打包');
   const doc = pluginDocument(bundle, 'testnonce');
   const pngs = (doc.match(/data:image\/png;base64,/g) || []).length;
   assert.equal(pngs, 2, '内联进 CSS 的精灵图数量不对: ' + pngs);
+  assert.equal((doc.match(/data:image\/webp;base64,/g) || []).length, 1, '肖像精灵图没有内联进 CSS');
   assert.ok(!/url\(["']?icons\//.test(doc), 'CSS 里还留着没内联的图片地址');
   assert.match(doc, /connect-src 'none'/);
+});
+
+test('荣誉：赛事名次与奖项都指向真实赛事，奖项已中文化', () => {
+  const H = data.honors;
+  assert.ok(H && H.title && H.award, '荣誉表缺失');
+  for (const [key, cols] of [['title', ['t', 'pl']], ['award', ['t', 'a']]]) {
+    const t = H[key];
+    assert.ok(t.n > 1000, key + ' 行数过少: ' + t.n);
+    let acc = 0;
+    let prev = -1;
+    for (let i = 0; i < t.pd.length; i++) {
+      acc += t.pd[i];
+      assert.ok(acc >= 0 && acc < data.counts.players, key + ' 选手下标越界');
+      assert.ok(acc >= prev, key + ' 必须按选手升序');
+      prev = acc;
+    }
+    for (const c of cols) assert.equal(t[c].length, t.n, key + '.' + c + ' 长度不符');
+    for (const v of t.t) assert.ok(v > 0 && v < data.tourn.n, key + ' 赛事下标越界');
+  }
+  for (const pl of data.honors.title.pl) assert.ok(pl >= 1 && pl <= 4, '名次必须是 1..4');
+  // 冠军行必须真的有名次 1
+  const champs = [...data.honors.title.pl].filter((v) => v === 1).length;
+  assert.ok(champs > 100, '冠军条数过少: ' + champs);
+  const names = data.honors.awardNames;
+  assert.ok(names.length > 20, '奖项名表过少');
+  for (const name of names) assert.ok(name && name.length <= 16, '奖项名异常: ' + name);
+  // 奖项名里的 MVP、KDA、ADC 这类缩写本来就该保留，其余必须是中文
+  const KEEP = /\b(MVP|KDA|MSI|ADC|EPL|LSC|LPL|LCK|LEC|LCS|EMEA)\b/g;
+  for (const name of names) {
+    assert.doesNotMatch(name.replace(KEEP, ''), /[A-Za-z]/, '奖项名还没中文化: ' + name);
+  }
+  for (const a of data.honors.award.a) assert.ok(a >= 0 && a < names.length, '奖项下标越界');
+});
+
+test('肖像精灵图与槽位表一致，网格尺寸与文件头相符', () => {
+  const P = data.portraits;
+  assert.ok(P, '肖像数据缺失');
+  assert.ok(data.icons.player && data.icons.player.count === P.count);
+  assert.equal(P.slot.length, data.counts.players, '槽位列应与选手数等长');
+  let used = 0;
+  for (const v of P.slot) {
+    if (!v) continue;
+    used++;
+    assert.ok(v - 1 < P.count, '肖像槽位越界: ' + v);
+  }
+  assert.equal(used, data.counts.portraits, '有肖像的选手数与 counts.portraits 不符');
+  assert.ok(used > 100, '有肖像的选手过少: ' + used);
+
+  const buf = fs.readFileSync(path.join(root, 'ui/icons/players.webp'));
+  assert.equal(buf.toString('ascii', 0, 4), 'RIFF');
+  assert.equal(buf.toString('ascii', 8, 12), 'WEBP');
+  const chunk = buf.toString('ascii', 12, 16);
+  let w; let h;
+  if (chunk === 'VP8X') { w = buf.readUIntLE(24, 3) + 1; h = buf.readUIntLE(27, 3) + 1; }
+  else if (chunk === 'VP8 ') { w = buf.readUInt16LE(26) & 0x3fff; h = buf.readUInt16LE(28) & 0x3fff; }
+  else if (chunk === 'VP8L') {
+    const b = buf.readUInt32LE(21);
+    w = (b & 0x3fff) + 1; h = ((b >> 14) & 0x3fff) + 1;
+  } else throw new Error('未知的 WebP 块: ' + chunk);
+  assert.equal(w, P.cols * P.size, '肖像精灵图宽度不符');
+  assert.equal(h, Math.ceil(P.count / P.cols) * P.size, '肖像精灵图高度不符');
 });
 
 test('插件包体积在 4 MiB 之内', () => {

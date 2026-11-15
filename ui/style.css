@@ -415,11 +415,48 @@ a { color: inherit; }
 .cicon[hidden],
 .tlogo[hidden] { display: none; }
 .row-logo {
-  width: 15px; height: 15px;
-  background-size: var(--tlogo-row-w, 300px) auto;
+  width: 20px; height: 20px;
+  background-size: var(--tlogo-row-w, 400px) auto;
   border-radius: 2px;
 }
 .dhead-name .tlogo { margin-right: 5px; vertical-align: -3px; }
+
+/* 肖像：第三张精灵图，边长由数据包给出（tools/build-portraits.py） */
+.dhead-flex { display: flex; align-items: flex-start; gap: 18px; }
+.dhead-text { min-width: 0; }
+.portrait {
+  display: block; flex: 0 0 auto;
+  width: var(--portrait-size, 56px); height: var(--portrait-size, 56px);
+  border: 1px solid var(--rule-strong); border-radius: 3px;
+  background-image: url('icons/players.webp');
+  background-repeat: no-repeat;
+  background-size: var(--portrait-w, 1120px) auto;
+  background-color: var(--raise);
+  filter: grayscale(.12);
+}
+
+/* 荣誉 */
+.hw-sum { font-family: var(--mono); font-size: 10.5px; letter-spacing: .06em; color: var(--muted); }
+.honors { display: flex; flex-direction: column; }
+.honor {
+  display: grid; grid-template-columns: 44px minmax(0, 1fr) auto;
+  gap: 10px; align-items: center;
+  padding: 7px 0;
+  border: 0; border-bottom: 1px solid var(--rule);
+  background: none; font: inherit; color: inherit; text-align: left;
+  cursor: pointer;
+}
+.honor:last-child { border-bottom: 0; }
+.honor:hover .honor-e { color: var(--accent); }
+.honor-y { font-family: var(--mono); font-size: 11px; color: var(--muted); letter-spacing: .04em; }
+.honor-e { font-size: 13.5px; color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.honor-p {
+  font-family: var(--mono); font-size: 10px; letter-spacing: .08em; white-space: nowrap;
+  padding: 2px 7px; border: 1px solid var(--rule-strong); border-radius: 2px; color: var(--muted);
+}
+.honor-p.p1 { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
+.honor-p.p2 { color: var(--ink-2); border-color: var(--ink-2); }
+.honor-p.aw { color: var(--ink-2); border-style: dashed; }
 
 /* 招牌英雄 */
 .favs { display: flex; flex-wrap: wrap; gap: 8px 10px; padding-top: 6px; }
@@ -709,6 +746,9 @@ a { color: inherit; }
     margin: -4px 0 14px;
   }
   .dhead-actions { position: static; margin-top: 14px; }
+  /* 手机上是拇指操作：所有 .btn 统一给到 44px 的点击高度，荣誉行也一样 */
+  .btn { min-height: 44px; padding: 0 14px; }
+  .honor { min-height: 44px; }
   .tl-row { grid-template-columns: 150px minmax(0, 1fr); }
   .tl-dur { display: none; }
   .fact { grid-template-columns: 88px minmax(0, 1fr); }

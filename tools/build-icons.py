@@ -28,7 +28,7 @@ DD = "https://ddragon.leagueoflegends.com"
 API = "https://lol.fandom.com/api.php"
 PROXY = os.environ.get("HTTPS_PROXY") or os.environ.get("HTTP_PROXY")
 TEAM_LIMIT = int(os.environ.get("TEAM_ICONS", "260"))
-CHAMP_SIZE, TEAM_SIZE = 22, 24
+CHAMP_SIZE, TEAM_SIZE = 22, 32
 UA = "LolAlmanacBuild/1.1 (https://github.com/liveldy/Nous-Plugin-LoL-Almanac) python-urllib"
 CACHE = os.path.join(RAW, "icons")
 DELAY = 0.4  # seconds between API calls; leaguepedia rate-limits aggressively
@@ -108,7 +108,8 @@ def sheet(images, size, cols, path):
     canvas = Image.new("RGBA", (cols * size, rows * size), (0, 0, 0, 0))
     for i, im in enumerate(images):
         canvas.paste(im, ((i % cols) * size, (i // cols) * size))
-    # 256 色调色板 + 透明：图标只有色块，肉眼几乎看不出差别，体积却只要三分之一
+    # 256 色调色板 + 透明：图标只有色块，肉眼几乎看不出差别，体积却只要三分之一。
+    # 试过无损 WebP：带渐变的 alpha 原图要 170 KB，调色板 PNG 反而只有 55 KB。
     alpha = canvas.getchannel("A")
     flat = Image.new("RGB", canvas.size, (255, 255, 255))
     flat.paste(canvas, (0, 0), canvas)
@@ -173,7 +174,15 @@ score = lambda t: count.get(t, 0) + 9 * active.get(t, 0)
 top_teams = sorted(set(count) | set(active), key=lambda t: (-score(t), -count.get(t, 0)))[:TEAM_LIMIT]
 
 SUFFIXES = ("logo std.png", "logo.png", "logo_square.png", "logo square.png", "std.png")
+URL_CACHE = os.path.join(CACHE, "team-urls.json")
 urls = {}          # "<team>\x00<suffix>" -> cdn url
+# 解析结果落盘：换图标尺寸、重跑时不用再问一次 API（REFRESH_URLS=1 可强制重解）
+if os.path.exists(URL_CACHE) and not os.environ.get("REFRESH_URLS"):
+    try:
+        urls = json.load(open(URL_CACHE, encoding="utf-8"))
+        print("  url cache", len(urls), "entries", flush=True)
+    except Exception:
+        urls = {}
 for suffix in SUFFIXES:
     todo = [t for t in top_teams if t + "\x00" + suffix not in urls]
     for i in range(0, len(todo), 40):
@@ -192,10 +201,11 @@ for suffix in SUFFIXES:
             if not name.endswith(suffix):
                 continue
             info = page.get("imageinfo")
-            if info:
-                urls[name[:-len(suffix)] + "\x00" + suffix] = info[0]["url"]
+            # 找不到的文件也记成空，省得下次再问
+            urls[name[:-len(suffix)] + "\x00" + suffix] = info[0]["url"] if info else ""
         print("  resolve", suffix, i + len(batch), "/", len(todo), "hits", len(urls), flush=True)
         time.sleep(DELAY)
+json.dump(urls, open(URL_CACHE, "w", encoding="utf-8"), ensure_ascii=False)
 
 tiles, team_meta = [], {}
 for name in top_teams:

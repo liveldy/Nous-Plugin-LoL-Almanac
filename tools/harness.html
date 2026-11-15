@@ -65,8 +65,23 @@
       const q = document.querySelector('#q');
       q.value = sel;
       q.dispatchEvent(new Event('input'));
-      waitFor(() => document.querySelector('.row') && document.querySelector('#resultCount').textContent.indexOf('1 ') === 0,
-        () => { const row = document.querySelector('.row'); if (row) row.click(); });
+      // 搜索结果可能不止一条（Faker 还有 Showmaker 之类）而列表是虚拟滚动的，
+      // 所以一边往下滚一边找完全同名的那一行，找不到就退而点开头匹配的第一行
+      const rows = () => [...document.querySelectorAll('.row')];
+      const nameOf = (r) => (r.querySelector('.r-name') || {}).textContent || '';
+      const pick = () => rows().find((r) => nameOf(r) === sel) || rows().find((r) => nameOf(r).startsWith(sel));
+      const listEl = document.querySelector('#list');
+      listEl.scrollTop = 0;
+      const tick = (tries) => {
+        const hit = pick();
+        if (hit) { hit.click(); return; }
+        if (tries > 40) return;
+        if (listEl.scrollTop + listEl.clientHeight < listEl.scrollHeight - 2) {
+          listEl.scrollTop += listEl.clientHeight * 0.8;
+        }
+        setTimeout(() => tick(tries + 1), 120);
+      };
+      tick(0);
     });
   }
 </script>

@@ -1,15 +1,26 @@
 {
   "id": "app.nous.lol-almanac",
   "name": "英雄联盟职业选手图鉴",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "api": "1.3",
   "requiresHost": "1.2.0",
-  "description": "Leaguepedia 全量快照：两万余名英雄联盟职业选手的档案、战队履历、赛事记录、生涯数据、合同与账号，配俱乐部队标与英雄图标，离线秒查。",
+  "description": "Leaguepedia 全量快照：两万余名英雄联盟职业选手的档案、战队履历、赛事记录、荣誉与奖项、生涯数据、合同与账号，配俱乐部队标、英雄图标与选手肖像，离线秒查。",
   "author": {
     "name": "Nelson",
     "url": "https://github.com/liveldy"
   },
   "changelog": [
+    {
+      "version": "1.2.0",
+      "publishedAt": "2026-11-16",
+      "changes": [
+        "新增选手荣誉：从 TournamentResults 取赛事前四名，与选手在赛事里的登记战队对齐，得到冠军 / 亚军 / 四强；从 IndividualAchievements 取赛季奖项（MVP、一阵 / 二阵 / 三阵、最佳新秀、最佳教练组…），共 14,048 条赛事名次与 2,468 条奖项，档案页按年份倒序列出。",
+        "新增选手肖像：从 PlayerImages 取本人资料照，裁成方形拼成一张 48px 的 WebP 精灵图，出场最多的 240 名选手带肖像；肖像槽位随数据包下发，界面用 CSS 背景定位，离线可用。",
+        "俱乐部队标放大：24px 提到 32px（列表行里 15px 提到 20px），510 支队伍的徽记更清楚。",
+        "赛事名再中文化一批常见词（主赛事、杯、大师赛、邀请赛、挑战赛、线上赛…），并修掉「锦标赛秋季赛赛季」这类重复尾巴。",
+        "为腾出体积：去掉排位账号列（6,475 名选手的小号原文，压缩后 108 KB）与四列界面没用到的数据；新增的荣誉只收录主流联赛的淘汰赛与国际赛事，边缘赛区、常规赛与线上赛的名次不进荣誉表。"
+      ]
+    },
     {
       "version": "1.1.0",
       "publishedAt": "2026-11-16",
@@ -69,6 +80,7 @@
     "ui/fonts/nr-500-latin-ext.woff2",
     "ui/fonts/OFL.txt",
     "ui/icons/champions.png",
-    "ui/icons/teams.png"
+    "ui/icons/teams.png",
+    "ui/icons/players.webp"
   ]
 }

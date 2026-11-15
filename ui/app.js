@@ -49,6 +49,8 @@
     walk(D.tenures); walk(D.contracts); walk(D.tp); walk(D.stats); walk(D.aliases); walk(D.champs);
     walk(D.tourn, ['name']);
     walk(D.fav);
+    if (D.honors) { walk(D.honors.title); walk(D.honors.award); }
+    if (D.portraits) walk(D.portraits);
     if (D.logo && typeof D.logo.d === 'string') D.logo = dec(D.logo);
   }
 
@@ -99,8 +101,12 @@
     if (g.team) {
       st.setProperty('--tlogo-size', g.team.size + 'px');
       st.setProperty('--tlogo-w', g.team.cols * g.team.size + 'px');
-      // 列表里的队标小一号（15px），精灵图按同比例缩放才不会错位
-      st.setProperty('--tlogo-row-w', g.team.cols * 15 + 'px');
+      // 列表里的队标小一号（20px），精灵图按同比例缩放才不会错位
+      st.setProperty('--tlogo-row-w', g.team.cols * 20 + 'px');
+    }
+    if (g.player) {
+      st.setProperty('--portrait-size', g.player.size + 'px');
+      st.setProperty('--portrait-w', g.player.cols * g.player.size + 'px');
     }
   }
   const champLabel = (slot) => (slot >= 0 && D.champZh ? D.champZh[slot] || '' : '');
@@ -115,6 +121,7 @@
   function paintIcons(root) {
     for (const el of root.querySelectorAll('.cicon[data-slot]')) iconAt(el, 'champ', Number(el.dataset.slot));
     for (const el of root.querySelectorAll('.tlogo[data-slot]')) iconAt(el, 'team', Number(el.dataset.slot));
+    for (const el of root.querySelectorAll('.portrait[data-slot]')) iconAt(el, 'player', Number(el.dataset.slot));
   }
   const champChip = (slot, extra) => {
     if (slot < 0) return '';
@@ -168,7 +175,6 @@
     ['TeamLast', '最后效力', 'team'],
     ['Contract', '合同到期', 'date'],
     ['ContractText', '合同说明', 'dict'],
-    ['SoloqueueIds', '排位账号', 'text'],
     ['NameAlphabet', '文字系统', 'dict'],
     ['Deathdate', '逝世日期', 'date'],
   ];
@@ -215,6 +221,12 @@
     D.tenures.abs = prefix(D.tenures);
     D.contracts.abs = prefix(D.contracts);
     if (D.tp && D.tp.pd) D.tp.abs = prefix(D.tp);
+    if (D.honors) {
+      for (const key of ['title', 'award']) {
+        const t = D.honors[key];
+        if (t && t.pd) { t.abs = prefix(t); D.honors[key] = t; }
+      }
+    }
 
     // per-player ranges (tables are sorted by player)
     const range = (abs, n2) => {
@@ -232,6 +244,12 @@
     D.tenures.start = range(D.tenures.abs, n);
     D.contracts.start = range(D.contracts.abs, n);
     if (D.tp && D.tp.abs) D.tp.start = range(D.tp.abs, n);
+    if (D.honors) {
+      for (const key of ['title', 'award']) {
+        const t = D.honors[key];
+        if (t && t.abs) t.start = range(t.abs, n);
+      }
+    }
     P.tenureCount = countPer(D.tenures.start, n);
     if (D.tp) P.eventCount = countPer(D.tp.start, n);
 
@@ -574,16 +592,16 @@
   }
 
   function sectionsFor(i) {
-    const out = { tenures: [], events: [], contracts: [], champs: [], aliases: [], favs: [] };
+    const out = { tenures: [], events: [], contracts: [], champs: [], aliases: [], favs: [], honors: [] };
     const T = D.tenures;
     for (let k = T.start[i]; k < T.start[i + 1]; k++) {
       out.tenures.push({
-        team: T.t[k], join: T.j[k], leave: T.l[k], cur: T.cur[k], nx: T.nx[k], ce: T.ce[k],
+        team: T.t[k], join: T.j[k], leave: T.l[k], cur: T.cur[k],
       });
     }
     if (!out.tenures.length) {
       const tNow = D.columns.Team[i];
-      if (tNow) out.tenures.push({ team: tNow, join: 0, leave: 0, cur: 1, nx: 0, ce: 0 });
+      if (tNow) out.tenures.push({ team: tNow, join: 0, leave: 0, cur: 1 });
     }
     // 战队履历按入队日期升序，下一站就是下一段的战队
     out.tenures.forEach((t, k) => {
@@ -617,6 +635,21 @@
     for (let k = P.aliasFrom[i]; k < P.aliasFrom[i + 1]; k++) out.aliases.push(al.names[k]);
     if (P.favFrom) {
       for (let k = P.favFrom[i]; k < P.favFrom[i + 1]; k++) out.favs.push(P.favSlots[k] - 1);
+    }
+    // 荣誉：赛事名次与个人奖项合成一条时间线，按赛事日期倒序
+    if (D.honors) {
+      const H = D.honors;
+      if (H.title && H.title.start) {
+        for (let k = H.title.start[i]; k < H.title.start[i + 1]; k++) {
+          out.honors.push({ t: H.title.t[k], pl: H.title.pl[k], d: D.tourn.date[H.title.t[k]] || 0 });
+        }
+      }
+      if (H.award && H.award.start) {
+        for (let k = H.award.start[i]; k < H.award.start[i + 1]; k++) {
+          out.honors.push({ t: H.award.t[k], a: H.award.a[k], d: D.tourn.date[H.award.t[k]] || 0 });
+        }
+      }
+      out.honors.sort((a, b) => b.d - a.d);
     }
     return out;
   }
@@ -717,6 +750,46 @@
         '<span class="pool-games">' + c.g + ' · ' + pct(c.w, c.g) + '%</span></div>').join('') + '</div></div>';
   }
 
+  // 荣誉汇总：冠军 / 亚军 / 四强 / 奖项各多少条
+  function honorTally(list) {
+    const t = [0, 0, 0];
+    let awards = 0;
+    for (const h of list) {
+      if (h.pl) t[h.pl === 1 ? 0 : h.pl === 2 ? 1 : 2]++;
+      else awards++;
+    }
+    const parts = [];
+    if (t[0]) parts.push('冠军 ' + t[0]);
+    if (t[1]) parts.push('亚军 ' + t[1]);
+    if (t[2]) parts.push('四强 ' + t[2]);
+    if (awards) parts.push('奖项 ' + awards);
+    return { t, awards, parts, text: parts.length ? '荣誉：' + parts.join(' · ') : '' };
+  }
+
+  function renderHonors(sec, key) {
+    if (!sec.honors.length) return '';
+    const PLACE = { 1: '冠军', 2: '亚军', 3: '四强', 4: '四强' };
+    const hon = honorTally(sec.honors);
+    const limit = state.limit[key] || 10;
+    const list = sec.honors.slice(0, limit);
+    let html = '<div class="section">' + sectionHead('荣誉', sec.honors.length,
+      '<span class="hw-sum">' + esc(hon.parts.join(' · ')) + '</span>');
+    html += '<div class="honors">' + list.map((h) => {
+      const name = D.tourn.name[h.t] || TOURNS[h.t] || '';
+      const year = yearOf(h.d);
+      return '<button class="honor" data-tourn="' + h.t + '">' +
+        '<span class="honor-y">' + (year || '—') + '</span>' +
+        '<span class="honor-e">' + esc(name) + '</span>' +
+        (h.pl ? '<span class="honor-p p' + h.pl + '">' + PLACE[h.pl] + '</span>'
+          : '<span class="honor-p aw">' + esc((D.honors.awardNames || [])[h.a] || '') + '</span>') +
+        '</button>';
+    }).join('') + '</div>';
+    if (sec.honors.length > limit) {
+      html += '<button class="more" data-more="' + key + '">展开其余 ' + (sec.honors.length - limit) + ' 项 →</button>';
+    }
+    return html + '</div>';
+  }
+
   function renderFavs(sec) {
     if (!sec.favs.length) return '';
     return '<div class="section">' + sectionHead('招牌英雄', sec.favs.length) +
@@ -793,9 +866,14 @@
     const eyebrow = [...new Set([P.country[i], P.region[i], P.role[i]].filter(Boolean))];
     const page = P.page[i] || P.id[i];
     const url = 'https://lol.fandom.com/wiki/' + encodeURIComponent(page.replace(/ /g, '_'));
+    // 肖像：只有进过精灵图的选手才有槽位（0 = 没有）
+    const slot = D.portraits && D.portraits.slot ? (D.portraits.slot[i] || 0) - 1 : -1;
 
     let html = '<div class="backbar"><button class="btn" data-back="1">' + ICON_BACK + '索引</button></div>';
     html += '<div class="dhead">' +
+      '<div class="dhead-flex">' +
+      (slot >= 0 ? '<span class="portrait" data-slot="' + slot + '"></span>' : '') +
+      '<div class="dhead-text">' +
       '<div class="dhead-eyebrow">' +
       eyebrow.map((v) => '<span>' + esc(v) + '</span>').join('<span>·</span>') +
       (retired ? '<span class="tagon on">已退役</span>' : P.team[i] ? '<span class="tagon on">现役</span>' : '') +
@@ -806,13 +884,14 @@
       (P.name[i] ? '<span>' + esc(P.name[i]) + '</span>' : '') +
       (P.native[i] && P.native[i] !== P.zh[i] ? '<span class="native">' + esc(P.native[i]) + '</span>' : '') +
       (P.team[i] ? '<span class="native">' + logoTip(D.columns.Team[i]) + esc(P.team[i]) + '</span>' : '') +
-      '</div>' +
+      '</div></div></div>' +
       '<div class="dhead-actions">' +
       '<button class="btn" data-copy="1" aria-label="复制选手档案">' + ICON_COPY + '复制</button>' +
       '<a class="btn" href="' + esc(url) + '" data-open="' + esc(url) + '" aria-label="在 Leaguepedia 打开">Leaguepedia' + ICON_OUT + '</a>' +
       '</div></div>';
 
     html += band(i, st, sec);
+    html += renderHonors(sec, i + 'h');
     html += renderFavs(sec);
     html += renderTenures(sec, i + 't');
     html += renderEvents(sec, i + 'e');
@@ -899,6 +978,8 @@
     const line = [P.country[i], P.region[i], P.role[i], P.team[i]].filter(Boolean).join(' · ');
     if (line) parts.push(line);
     if (P.games[i]) parts.push('出场 ' + P.games[i] + ' 场，胜率 ' + pct(P.wins[i], P.games[i]) + '%');
+    const hon = honorTally(sectionsFor(i).honors);
+    if (hon.text) parts.push(hon.text);
     parts.push('https://lol.fandom.com/wiki/' + encodeURIComponent((P.page[i] || P.id[i]).replace(/ /g, '_')));
     return parts.join('\n');
   }

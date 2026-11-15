@@ -271,7 +271,19 @@
     "Circuito Nacional Chile": "智利全国赛",
     "Circuito Nacional Peru": "秘鲁全国赛",
     "Oceanic University Championship": "大洋洲高校锦标赛",
-    "Prime League Pro Division": "Prime League 职业组"
+    "Prime League Pro Division": "Prime League 职业组",
+    "League of Legends Championship Pacific": "太平洋 LCP",
+    "LCP Wildcard League": "LCP 外卡联赛",
+    "League of Legends Championship of The Americas": "美洲 LTA",
+    "League of Legends Championship of The Americas North": "美洲 LTA 北区",
+    "League of Legends Championship of The Americas South": "美洲 LTA 南区",
+    "Arabian League": "阿拉伯联赛",
+    "LVP SuperLiga": "LVP 超级联赛",
+    "Asia Masters": "亚洲大师赛",
+    "League of Legends Thailand Series": "泰国联赛",
+    "League of Legends Game Changers": "Game Changers 女子赛",
+    "Taiwan Legend Championship": "台湾传奇联赛",
+    "Prime League 1st Division": "Prime League 一级联赛"
   },
   "_event_note": "赛事名：按词组替换（长的先替换），品牌名和联赛专名不在此表里，替换后仍是原文；中文之间会去掉空格。",
   "event": [
@@ -486,6 +498,184 @@
     [
       "Tournament",
       "锦标赛"
+    ],
+    [
+      "Main Event",
+      "主赛事"
+    ],
+    [
+      "Worlds",
+      "全球总决赛"
+    ],
+    [
+      "Esports World Cup",
+      "电竞世界杯"
+    ],
+    [
+      "Cup",
+      "杯"
+    ],
+    [
+      "Event",
+      "赛事"
+    ],
+    [
+      "Masters",
+      "大师赛"
+    ],
+    [
+      "Invitational",
+      "邀请赛"
+    ],
+    [
+      "Challenge",
+      "挑战赛"
+    ],
+    [
+      "Showdown",
+      "对决"
+    ],
+    [
+      "Online",
+      "线上赛"
+    ],
+    [
+      "Opening",
+      "揭幕赛"
+    ],
+    [
+      "Closing",
+      "收官赛"
+    ],
+    [
+      "Open",
+      "公开赛"
+    ],
+    [
+      "Series",
+      "系列赛"
+    ],
+    [
+      "Elite",
+      "精英赛"
+    ],
+    [
+      "Week",
+      "周"
+    ],
+    [
+      "Conference",
+      "分会"
+    ],
+    [
+      "Arena",
+      "竞技场"
+    ],
+    [
+      "the",
+      ""
     ]
-  ]
+  ],
+  "award": {
+    "All Pro Team": "最佳阵容",
+    "1st All Pro Team": "一阵",
+    "2nd All Pro Team": "二阵",
+    "3rd All Pro Team": "三阵",
+    "2nd All-Pro Team": "二阵",
+    "3rd All-Pro Team": "三阵",
+    "2nd All Pro-Team": "二阵",
+    "3rd All Pro-Team": "三阵",
+    "First Team": "一阵",
+    "Second Team": "二阵",
+    "Third Team": "三阵",
+    "Fan-voted All Pro Team": "观众票选最佳阵容",
+    "Fan Vote All Pro Team": "观众票选最佳阵容",
+    "Fan Vote 2nd All Pro Team": "观众票选二阵",
+    "Expert Voted All Pro Team": "专家票选最佳阵容",
+    "Expert Chosen All Pro Team": "专家票选最佳阵容",
+    "Nirvana All Pro Team": "涅槃组最佳阵容",
+    "Team of the Season": "赛季最佳阵容",
+    "Most Valuable Player": "MVP",
+    "MVP": "MVP",
+    "Season MVP": "赛季 MVP",
+    "Split MVP": "赛季 MVP",
+    "Overall MVP": "总 MVP",
+    "Regular Season MVP": "常规赛 MVP",
+    "Playoffs MVP": "季后赛 MVP",
+    "Tournament MVP": "赛事 MVP",
+    "MSI MVP": "MSI MVP",
+    "MSI MVP ": "MSI MVP",
+    "Fan Vote MVP": "观众票选 MVP",
+    "Influencer MVP": "人气 MVP",
+    "Finals MVP": "决赛 MVP",
+    "Final MVP": "决赛 MVP",
+    "MVP of Final Series": "决赛 MVP",
+    "1st Round MVP": "第一阶段 MVP",
+    "1st Phase MVP": "第一阶段 MVP",
+    "2nd Round MVP": "第二阶段 MVP",
+    "3rd Round MVP": "第三阶段 MVP",
+    "4th Round MVP": "第四阶段 MVP",
+    "MVP 2nd Place": "MVP 第二名",
+    "MVP 3rd Place": "MVP 第三名",
+    "Season 3 MVP": "第三赛季 MVP",
+    "MVP EPL LOL Season 1": "EPL 第一赛季 MVP",
+    "Thời Báo MVP Award": "时报 MVP",
+    "Outstanding Rookie": "最佳新秀",
+    "Best Rookie": "最佳新秀",
+    "Rookie of the Year": "年度新秀",
+    "Best Newcomer": "最佳新人",
+    "Best Young Player": "最佳年轻选手",
+    "Young Player": "最佳年轻选手",
+    "Rookie Of The Split": "赛季最佳新秀",
+    "Rookie of the Split": "赛季最佳新秀",
+    "Rookie 2nd Place": "最佳新秀第二名",
+    "Rookie 3rd Place": "最佳新秀第三名",
+    "Most Valuable Prospect": "最具价值新秀",
+    "2nd Most Valuable Prospect": "最具价值新秀第二名",
+    "3rd Most Valuable Prospect": "最具价值新秀第三名",
+    "Most Potential Player": "最具潜力选手",
+    "Best Coach": "最佳教练",
+    "Coach of the Year": "年度教练",
+    "Coaching Staff": "最佳教练组",
+    "Best Coaching Staff": "最佳教练组",
+    "Best Staff": "最佳团队",
+    "Most Improved": "进步最快选手",
+    "Most Improved Player": "进步最快选手",
+    "Most Improved Players": "进步最快选手",
+    "Most Imrpoved Player": "进步最快选手",
+    "Fan Vote Most Improved Player": "观众票选进步最快选手",
+    "Most Improved 2nd Place": "进步最快第二名",
+    "Most Improved 3rd Place": "进步最快第三名",
+    "Most Impressive Player": "最惊艳选手",
+    "Best Top": "最佳上单",
+    "Best Jungle": "最佳打野",
+    "Best Mid": "最佳中单",
+    "Best Ad": "最佳 ADC",
+    "Best Support": "最佳辅助",
+    "Best Foreign Player": "最佳外援",
+    "Best Player": "最佳选手",
+    "Player of the Split": "赛季最佳选手",
+    "Best Duelist": "最佳对线选手",
+    "KDA Leader Toplane": "KDA 最高 · 上路",
+    "KDA Leader Jungle": "KDA 最高 · 打野",
+    "KDA Leader Midlane": "KDA 最高 · 中路",
+    "KDA Leader Botlane": "KDA 最高 · 下路",
+    "KDA Leader Support": "KDA 最高 · 辅助",
+    "Best KDA": "最佳 KDA",
+    "Most Player of the Match": "最多单场最佳",
+    "Multikiller": "最多连杀",
+    "Best Solokiller": "单杀王",
+    "Most Champs. Played": "使用英雄最多",
+    "Champion Ocean": "英雄海",
+    "Showman": "最会整活",
+    "Craque da Galera": "人气之星",
+    "Richest Player of the Split": "赛季最富",
+    "Fan Award": "粉丝奖",
+    "Favorite Player (Fanvote)": "观众最爱选手",
+    "Giveaway": "抽奖活动",
+    "Best Esport Fanpage": "最佳电竞主页",
+    "LSC Achievement Award": "LSC 成就奖",
+    "Best Play": "最佳操作"
+  },
+  "_award_note": "IndividualAchievements 的 Display 取值 → 中文奖项名。表里没有的取值保持英文原文，构建时会打印出来。"
 }

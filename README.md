@@ -14,17 +14,20 @@
 | 选手档案 | 20,879 | `Players`（除 `Image` 外全部字段） |
 | 中文名 | 2,336 名选手 | `Players.NativeName` 的汉字本名 + 中文维基核对过的译名 |
 | 战队履历 | 113,844 | `Tenures` |
-| 赛事元数据（名称 / 联赛 / 赛区 / 级别 / 起止日期 / 奖金 / 赛制） | 10,560 | `Tournaments` |
+| 赛事元数据（名称 / 联赛 / 赛区 / 开始日期 / 是否资格赛） | 10,561 | `Tournaments` |
 | 赛事出场（赛事 / 战队 / 年份） | 254,361 | `TournamentPlayers` |
 | 合同到期记录 | 15,196 | `Contracts` |
 | 曾用名（检索用） | 13,760 | `PlayerRedirects` |
 | 生涯合计（出场 / 胜率 / KDA / 五杀 / 场均经济·补刀·视野·伤害 / 首末场） | 14,470 名选手 | `ScoreboardPlayers` 聚合 |
-| 俱乐部队标 | 526 支队伍 | Leaguepedia 维基文件（`<Team>logo std.png` 等） |
+| 赛事荣誉：冠军 / 亚军 / 四强 | 14,048 | `TournamentResults` 前四名 |
+| 赛季奖项：MVP、最佳阵容、最佳新秀、最佳教练…… | 2,468 | `IndividualAchievements` |
+| 俱乐部队标 | 510 支队伍 | Leaguepedia 维基文件（`<Team>logo std.png` 等） |
 | 英雄图标与官方中文名 | 173 个英雄 | [Data Dragon](https://ddragon.leagueoflegends.com/) `zh_CN` |
+| 选手肖像 | 240 名选手 | Leaguepedia 维基文件（`PlayerImages` 里的 Headshot） |
 
 选手档案展示 `Players` 表的每一个字段：本名、母语名、文字系统、国家、国籍、赛区、惯用位置、
-现任与历任战队、合同与合同说明、招牌英雄、排位账号（`KR: Hide on bush#KR1` 这种原文已清掉维基标记），
-以及 X、直播、YouTube、Instagram、微博、Discord、lolpros、Deeplol、DPM 等全部社交与战绩链接
+现任与历任战队、合同与合同说明、招牌英雄，以及 X、直播、YouTube、Instagram、微博、Discord、
+lolpros、Deeplol、DPM 等全部社交与战绩链接
 （点击用系统浏览器打开）。空字段不显示，有值的字段全部显示；`IsRetired`、`ToValorant`、
 `IsSubstitute` 等 10 个布尔标记合并成一行「标记」。
 
@@ -56,18 +59,22 @@
 
 ### 没有收录的内容与原因
 
-- **选手头像**：见下一条 —— Leaguepedia 没有可用的选手肖像字段，所以用队标与英雄图标来做视觉识别。
-  `Players.Image` 在 Cargo 里全是空串；`PlayerImages` 表在这套接口上直接报
-  `internal_api_error_MWException`（换 `*`、换字段、带过滤都一样），拿不到 `FileName` 列表。
-  即便拿到，CSP 只允许 `img-src data:`，两万张头像也不可能塞进 4 MiB。
-- **俱乐部队标的完整覆盖**：`Tenures` 里出现过的队伍有 10,708 支，队标图集只放 526 支
-  （按「履历条数 + 9 × 现役选手数」排序，覆盖主流队伍与当下有人的队伍），因为每块图标约 80 字节，
-  全量需要 800 KB 以上。没有图标的队伍在界面上不显示图标，不影响其他信息。
+- **选手肖像的完整覆盖**：`PlayerImages` 里 10,050 名选手有头像文件，插件包只放得下其中出场最多的
+  240 名（见下面的体积预算）。没有肖像的选手档案里不显示肖像，其余信息照旧。
+- **俱乐部队标的完整覆盖**：`Tenures` 里出现过的队伍有 10,708 支，队标图集只放 510 支
+  （按「履历条数 + 9 × 现役选手数」排序，覆盖主流队伍与当下有人的队伍），因为每块 32px 图标约
+  127 字节，全量需要 1.3 MB 以上。没有图标的队伍在界面上不显示图标，不影响其他信息。
+- **荣誉的完整覆盖**：`TournamentResults` 有前四名记录的赛事远多于收录范围，插件只收主流联赛
+  （`tools/zh-terms.json` 里 `league` 表的 58 个联赛）的淘汰赛，以及全球总决赛、MSI、Rift Rivals、
+  All-Star 这些国际赛事的名次——全部赛事都收要 13 万行、多 287 KB 压缩体积，而边缘赛区、常规赛与
+  线上赛的名次在档案里只会把真正的荣誉淹掉（收进来的是 14,048 行、多 32 KB）。奖项同理只取
+  `IndividualAchievements` 里对得上的赛事。
 - **英雄池 / 位置分布**（`ScoreboardPlayers` 按 `Link,Champion` 聚合）：单人单英雄约 15 万个组合，
   实测这部分单独压缩就要 300 KB 以上，而插件包剩余预算不足 200 KB，因此不收录；选手的
   生涯合计仍然完整（见上表的生涯数据行）。`tools/fetch_stats.py` 里保留了抓取规格，配额宽裕时可以打开。
 - **逐局战绩**（`ScoreboardPlayers` 原始行，数百万行）：单局数据装不进插件包。
-- **队伍成绩**（`TournamentResults`）：与履历、赛事交叉后体积过大。
+- **排位账号**（`Players.SoloqueueIds`）：选手小号的维基原文（`KR: We4y, lpl aggression7 …`），
+  压紧后仍占 108 KB gzip，而价值远不及荣誉与肖像，1.2.0 里让位给了后两者。
 - **资格赛**（`Tournaments.IsQualifier=1`，1,927 个赛事、105,172 行出场）：不进入赛事履历，
   否则每人每年会多出十几场预选赛记录，把正式比赛淹掉。
 - **没有选手档案的名字**：`TournamentPlayers` 有 81,289 行、`Tenures` 有 1.4 万行指向的名字在
@@ -80,7 +87,8 @@
   每行带当前战队的队标（没有队标的队伍留白，保持左对齐）。
 - **筛选**：位置、赛区、国家或地区、状态（现役 / 退役 / 转项目），中文取值；并可切换排序
   （名字 / 出场 / 最近比赛 / 出道）。筛选条件叠加后会变成可单独撤掉的标签。
-- **右栏档案**：身份、ID 与中文名、本名与母语名、生涯数据带、招牌英雄卡片（英雄图标 + 中文名 + 称号）、
+- **右栏档案**：肖像与身份、ID 与中文名、本名与母语名、生涯数据带、荣誉（冠军 / 亚军 / 四强与赛季
+  奖项，可点跳到对应赛事）、招牌英雄卡片（英雄图标 + 中文名 + 称号）、
   战队履历（带队标）、赛事履历（按年分组，带当场战队队标）、合同、完整档案、曾用名、链接。
 - **交叉跳转**：履历里的战队、赛事履历里的赛事都可以点，索引立刻筛出对应的人或赛事。
 - 快捷键：`/` 聚焦搜索，`↑` `↓` 在列表里移动，`Esc` 清空搜索。
@@ -103,12 +111,15 @@ export HTTPS_PROXY=http://127.0.0.1:7890 HTTP_PROXY=http://127.0.0.1:7890
 python tools/fetch.py raw Players,Tenures,Tournaments,Contracts,PlayerRedirects
 python tools/fetch_parts.py raw TournamentPlayers   # 44 万行，按首字母分片、可续跑
 python tools/fetch_stats.py raw CareerStats         # 逐局表在服务端聚合，避免拉几百万行
+python tools/fetch_honors.py raw                    # 赛事前四名、赛季奖项、选手头像文件名
 python tools/fetch_zh_names.py raw                  # 中文维基里查得到的那批选手的中文名
 python tools/verify_zh_names.py raw                 # 按名单核对通行译名（不存在或不是英雄联盟的丢弃）
 
-# 2. 抓图并合成两张精灵图（downloads 缓存在 raw/icons/，重跑只抓新增）
-python tools/build-icons.py raw ui/icons build
-#    TEAM_ICONS=620 控制队标数量；写入 ui/icons/*.png 与 build/icons.json、build/champions.json
+# 2. 抓图并合成三张精灵图（downloads 缓存在 raw/icons/、raw/portraits/，重跑只抓新增）
+TEAM_ICONS=600 python tools/build-icons.py raw ui/icons build
+#    TEAM_ICONS 控制队标数量（默认 260 只覆盖 231 支队伍）；写入 ui/icons/*.png 与 build/icons.json
+python tools/build-portraits.py raw ui/icons build 240
+#    第三个参数是肖像数量，按出场数取前 N；写入 ui/icons/players.webp 与 build/portraits.json
 
 # 3. 压缩成插件数据（字典编码 + 差分 + 定宽二进制 + gzip + base64）
 node tools/build-data.mjs raw build
@@ -125,9 +136,9 @@ node sdk/pack.mjs .
 
 ### 体积预算
 
-插件包上限 4 MiB。快照压缩后 2.74 MB，base64 进 `dex.js` 是 3.66 MiB，两张精灵图 96 KB，
-其余约 100 KB 是页面、字体与 SDK；`sdk/pack.mjs` 打出的发行包 4,143,094 字节（3.95 MiB），
-距上限约 50 KB。细节见 `docs/data-model.md`。
+插件包上限 4 MiB。快照压缩后 2.65 MB，base64 进 `dex.js` 是 3.53 MiB，三张图集 215 KB（base64 内联后
+286 KiB），字体 70 KB，页面与 SDK 约 79 KB；`sdk/pack.mjs` 打出的发行包 4,182,666 字节（3.99 MiB），
+距上限 11,638 字节——刚好够 240 张肖像。细节见 `docs/data-model.md`。
 
 ## 开发预览
 

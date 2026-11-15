@@ -1,15 +1,25 @@
 {
   "id": "app.nous.lol-almanac",
   "name": "英雄联盟职业选手图鉴",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "api": "1.3",
   "requiresHost": "1.2.0",
-  "description": "Leaguepedia 全量快照：两万余名英雄联盟职业选手的档案、战队履历、赛事记录、生涯数据、合同与账号，离线秒查。",
+  "description": "Leaguepedia 全量快照：两万余名英雄联盟职业选手的档案、战队履历、赛事记录、生涯数据、合同与账号，配俱乐部队标与英雄图标，离线秒查。",
   "author": {
     "name": "Nelson",
     "url": "https://github.com/liveldy"
   },
   "changelog": [
+    {
+      "version": "1.1.0",
+      "publishedAt": "2026-11-16",
+      "changes": [
+        "新增图像资源：173 个英雄图标与 233 家俱乐部队标，构建时拼成两张精灵图随包发送（离线可用，运行时不需要网络）。",
+        "赛事名与联赛名中文化：联赛名查表（LPL、LCK、全球总决赛…），赛事名按词组替换（春季赛、季后赛、预选赛…），俱乐部名保持原文。",
+        "招牌英雄改成带图标的卡片：每位英雄显示中文名与称号（如「李青 · 盲僧」），数据从逗号字符串改为紧凑索引表。",
+        "数字列改用定宽二进制编码，去掉重复的赛事页面名，包体积从 3.91 MiB 降到 3.87 MiB（仍远低于 4 MiB 上限）。"
+      ]
+    },
     {
       "version": "1.0.0",
       "publishedAt": "2026-11-15",
@@ -57,6 +67,8 @@
     "ui/data/dex.js",
     "ui/fonts/nr-500-latin.woff2",
     "ui/fonts/nr-500-latin-ext.woff2",
-    "ui/fonts/OFL.txt"
+    "ui/fonts/OFL.txt",
+    "ui/icons/champions.png",
+    "ui/icons/teams.png"
   ]
 }

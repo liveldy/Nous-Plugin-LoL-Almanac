@@ -14,6 +14,32 @@ const source = fs.readFileSync(dexPath, 'utf8');
 const b64 = /window\.__DEX__="([^"]+)";/.exec(source)?.[1];
 const data = JSON.parse(zlib.gunzipSync(Buffer.from(b64, 'base64')).toString('utf8'));
 
+// 数字列是 {w, d:base64} 的定宽二进制，测试里同样还原成定型数组
+function expand(D) {
+  const dec = (col) => {
+    const bin = Buffer.from(col.d, 'base64');
+    const view = new DataView(bin.buffer, bin.byteOffset, bin.byteLength);
+    const out = new (col.w === 'u8' ? Uint8Array : col.w === 'u16' ? Uint16Array : Uint32Array)(bin.length / (col.w === 'u8' ? 1 : col.w === 'u16' ? 2 : 4));
+    if (col.w === 'u8') out.set(bin);
+    else for (let i = 0; i < out.length; i++) out[i] = col.w === 'u16' ? view.getUint16(i * 2, true) : view.getUint32(i * 4, true);
+    return out;
+  };
+  const walk = (obj, skip = []) => {
+    if (!obj) return;
+    for (const k of Object.keys(obj)) {
+      if (skip.includes(k)) continue;
+      const v = obj[k];
+      if (v && typeof v === 'object' && typeof v.d === 'string' && typeof v.w === 'string') obj[k] = dec(v);
+    }
+  };
+  walk(D.columns); walk(D.tenures); walk(D.contracts); walk(D.tp);
+  walk(D.stats); walk(D.aliases); walk(D.champs); walk(D.tourn, ['name']);
+  walk(D.fav);
+  if (D.logo && typeof D.logo.d === 'string') D.logo = dec(D.logo);
+  return D;
+}
+expand(data);
+
 test('快照包含全部选手与全部 Players 字段', () => {
   assert.ok(data.counts.players > 20000, '选手数应超过两万');
   assert.equal(data.columns.ID.length, data.counts.players);
@@ -60,7 +86,7 @@ test('赛事出场与赛事表一致', () => {
   for (let i = 0; i < tp.pd.length; i++) {
     acc += tp.pd[i];
     assert.ok(acc < data.counts.players);
-    assert.ok(tp.t[i] > 0 && tp.t[i] < data.tournNames.length, '赛事下标越界');
+    assert.ok(tp.t[i] > 0 && tp.t[i] < data.tourn.n, '赛事下标越界');
     assert.ok(data.tourn.name[tp.t[i]], '赛事缺少名称');
   }
 });
@@ -102,6 +128,65 @@ test('选手有中文名，界面上的国家与位置已本地化', () => {
     for (const v of data.columns[field]) {
       if (v) assert.doesNotMatch(data.S[v], /[A-Za-z]/, field + ' 还没本地化: ' + data.S[v]);
     }
+  }
+});
+
+test('招牌英雄指向英雄图集，且每个英雄都有中文名', () => {
+  const { fav, icons, champZh, champTitle } = data;
+  assert.ok(fav && fav.n > 15000, '招牌英雄条目应有近两万条');
+  assert.equal(fav.c.length, data.counts.players);
+  assert.equal(fav.s.length, fav.n);
+  const total = fav.c.reduce((a, b) => a + b, 0);
+  assert.equal(total, fav.n, '每人数量之和应等于槽位表长度');
+  for (const slot of fav.s) assert.ok(slot >= 1 && slot <= icons.champ.count, '英雄槽位越界: ' + slot);
+  assert.equal(champZh.length, icons.champ.count);
+  for (const name of champZh) assert.doesNotMatch(name, /[A-Za-z]/, '英雄名必须是中文: ' + name);
+  for (const name of champTitle) assert.doesNotMatch(name, /[A-Za-z]/, '英雄称号必须是中文: ' + name);
+  assert.equal(champZh[data.champEn.indexOf('LeeSin')], '李青');
+  assert.equal(champZh[data.champEn.indexOf('Ahri')], '阿狸');
+});
+
+test('精灵图网格与数据包的坐标一致', () => {
+  // PNG 头里的宽高必须正好是「列数 × 边长」和「行数 × 边长」，否则背景定位会错位
+  const sizeOf = (file) => {
+    const head = fs.readFileSync(path.join(root, file)).subarray(0, 33);
+    assert.equal(head.toString('hex', 1, 4), '504e47', file + ' 不是 PNG');
+    return { w: head.readUInt32BE(16), h: head.readUInt32BE(20) };
+  };
+  for (const [kind, file] of [['champ', 'ui/icons/champions.png'], ['team', 'ui/icons/teams.png']]) {
+    const grid = data.icons[kind];
+    const png = sizeOf(file);
+    assert.equal(png.w, grid.cols * grid.size, kind + ' 精灵图宽度不符');
+    assert.equal(png.h, Math.ceil(grid.count / grid.cols) * grid.size, kind + ' 精灵图高度不符');
+    assert.ok(grid.count > 100, kind + ' 图标数量过少');
+  }
+  assert.ok(data.counts.teamLogos > 200, '应有二百多支队伍带队标');
+  assert.equal(data.logo.length, data.teams.length, '队标槽位表应与战队表等长');
+  let withLogo = 0;
+  for (let i = 1; i < data.logo.length; i++) {
+    if (!data.logo[i]) continue;
+    withLogo++;
+    assert.ok(data.logo[i] - 1 < data.icons.team.count, '队标槽位越界: ' + data.teams[i]);
+  }
+  assert.equal(withLogo, data.counts.teamLogos);
+});
+
+test('赛事名与联赛名已中文化，俱乐部名保持原文', () => {
+  const names = data.tourn.name;
+  const leagues = data.tourn.league;
+  const joined = names.join('\n');
+  assert.ok(!/<s>/i.test(joined), '赛事名里还留着删除线标记');
+  for (const word of ['春季赛', '季后赛', '赛季']) assert.ok(joined.includes(word), '赛事名应含「' + word + '」');
+  const lpl = names.filter((n) => /^LPL .*春季赛/.test(n) || /^LPL .*秋季赛/.test(n));
+  assert.ok(lpl.length > 0, 'LPL 赛事名应译成中文阶段名');
+  // 注意：定型数组的 map 会把返回的字符串强转回数字，先转成普通数组
+  const leagueNames = new Set([...leagues].filter((v) => v).map((v) => data.S[v]));
+  for (const want of ['LPL', 'LCK', '全球总决赛']) assert.ok(leagueNames.has(want), '联赛名应有「' + want + '」');
+  assert.ok(leagueNames.size > 100);
+  // 战队是专有名词：主流俱乐部的名字必须原样保留
+  const teamSet = new Set(data.teams);
+  for (const club of ['T1', 'Invictus Gaming', 'G2 Esports', 'FunPlus Phoenix', 'JD Gaming']) {
+    assert.ok(teamSet.has(club), '俱乐部名被改写了: ' + club);
   }
 });
 

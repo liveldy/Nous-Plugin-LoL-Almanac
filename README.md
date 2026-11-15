@@ -19,6 +19,8 @@
 | 合同到期记录 | 15,196 | `Contracts` |
 | 曾用名（检索用） | 13,760 | `PlayerRedirects` |
 | 生涯合计（出场 / 胜率 / KDA / 五杀 / 场均经济·补刀·视野·伤害 / 首末场） | 14,470 名选手 | `ScoreboardPlayers` 聚合 |
+| 俱乐部队标 | 526 支队伍 | Leaguepedia 维基文件（`<Team>logo std.png` 等） |
+| 英雄图标与官方中文名 | 173 个英雄 | [Data Dragon](https://ddragon.leagueoflegends.com/) `zh_CN` |
 
 选手档案展示 `Players` 表的每一个字段：本名、母语名、文字系统、国家、国籍、赛区、惯用位置、
 现任与历任战队、合同与合同说明、招牌英雄、排位账号（`KR: Hide on bush#KR1` 这种原文已清掉维基标记），
@@ -40,12 +42,27 @@
     由 `tools/verify_zh_names.py` 逐条核对：页面必须存在、且正文讲的是《英雄联盟》才算数。
   - 其余选手（韩国、欧美等）在 Leaguepedia 与中文维基里都没有中文名，硬造音译反而是错的，
     因此保留 ID，母语名照常显示。
-- 赛事、战队名是专有名词，保留 Leaguepedia 的写法（`LPL/2024 Season/Summer` 这类页面名会显示成赛事全名）。
+- **赛事名与联赛名**中文化，**俱乐部名保持原文**（专有名词，硬翻反而认不出来）：
+  - 联赛名通常是专名或缩写，只翻译有公认中文名的（`Tencent LoL Pro League` → LPL、`World Championship`
+    → 全球总决赛、`EU Masters` → 欧洲大师赛，约 50 条），查不到的保持原样；
+  - 赛事名按词组替换，长的先替换、按词边界匹配（`Spring` → 春季赛、`Playoffs` → 季后赛、`Qualifier`
+    → 预选赛、`Season 3` → 第 3 赛季），替换后把相邻汉字之间的空格去掉，于是
+    `LPL 2013 Spring Playoffs` 变成「LPL 2013 春季赛季后赛」；品牌名（Prime League、Hitpoint、
+    UltraLiga…）不在词表里，原样保留；`<s>` 删除线标记先清掉。
+- **英雄名用官方中文**：`Data Dragon` 的 `zh_CN` 语言包给出 173 个英雄的中文名与称号
+  （`Lee Sin` → 李青 · 盲僧），招牌英雄按此显示中文名并配上英雄图标。
+  注意 ddragon 的这个包里 `name` 与 `title` 是反的：`name` 是称号、`title` 才是中文名。
+- 赛区、联赛之外的地名（如 `MENA`）保持 Leaguepedia 的写法。
 
 ### 没有收录的内容与原因
 
-- **选手头像**：`PlayerImages` 给出的是 Fandom CDN 上的图片地址，插件的 CSP 只允许 `img-src data:`，
-  且近两千张头像无法放进 4 MiB 的插件包，因此不显示头像，改为排印式档案。
+- **选手头像**：见下一条 —— Leaguepedia 没有可用的选手肖像字段，所以用队标与英雄图标来做视觉识别。
+  `Players.Image` 在 Cargo 里全是空串；`PlayerImages` 表在这套接口上直接报
+  `internal_api_error_MWException`（换 `*`、换字段、带过滤都一样），拿不到 `FileName` 列表。
+  即便拿到，CSP 只允许 `img-src data:`，两万张头像也不可能塞进 4 MiB。
+- **俱乐部队标的完整覆盖**：`Tenures` 里出现过的队伍有 10,708 支，队标图集只放 526 支
+  （按「履历条数 + 9 × 现役选手数」排序，覆盖主流队伍与当下有人的队伍），因为每块图标约 80 字节，
+  全量需要 800 KB 以上。没有图标的队伍在界面上不显示图标，不影响其他信息。
 - **英雄池 / 位置分布**（`ScoreboardPlayers` 按 `Link,Champion` 聚合）：单人单英雄约 15 万个组合，
   实测这部分单独压缩就要 300 KB 以上，而插件包剩余预算不足 200 KB，因此不收录；选手的
   生涯合计仍然完整（见上表的生涯数据行）。`tools/fetch_stats.py` 里保留了抓取规格，配额宽裕时可以打开。
@@ -59,11 +76,12 @@
 
 ## 界面
 
-- **左栏索引**：虚拟滚动列表，20,879 行不掉帧；瞬时搜索覆盖 ID、中文名、本名、母语名与曾用名。
+- **左栏索引**：虚拟滚动列表，20,879 行不掉帧；瞬时搜索覆盖 ID、中文名、本名、母语名与曾用名；
+  每行带当前战队的队标（没有队标的队伍留白，保持左对齐）。
 - **筛选**：位置、赛区、国家或地区、状态（现役 / 退役 / 转项目），中文取值；并可切换排序
   （名字 / 出场 / 最近比赛 / 出道）。筛选条件叠加后会变成可单独撤掉的标签。
-- **右栏档案**：身份、ID 与中文名、本名与母语名、生涯数据带、战队履历、赛事履历（按年分组）、合同、
-  完整档案、曾用名、链接。
+- **右栏档案**：身份、ID 与中文名、本名与母语名、生涯数据带、招牌英雄卡片（英雄图标 + 中文名 + 称号）、
+  战队履历（带队标）、赛事履历（按年分组，带当场战队队标）、合同、完整档案、曾用名、链接。
 - **交叉跳转**：履历里的战队、赛事履历里的赛事都可以点，索引立刻筛出对应的人或赛事。
 - 快捷键：`/` 聚焦搜索，`↑` `↓` 在列表里移动，`Esc` 清空搜索。
 - 手机宽度（≤860px）切换成单栏：点选手看档案，档案顶部返回索引。
@@ -72,11 +90,14 @@
 
 ```sh
 python -m venv .venv && . .venv/bin/activate      # Windows: .venv\Scripts\activate
-pip install mwcleric                              # Leaguepedia 的 MediaWiki/Cargo 客户端（MIT）
+pip install mwcleric Pillow                       # Leaguepedia 客户端（MIT）+ 图片合成
 
 # 凭据只从环境变量读，不写进仓库；没有凭据也能匿名抓，只是慢
 export LEAGUEPEDIA_BOT_USER='...@...'
 export LEAGUEPEDIA_BOT_PASSWORD='...'
+
+# 国内网络访问 lol.fandom.com 与 ddragon 需要代理（抓图与抓表都要）
+export HTTPS_PROXY=http://127.0.0.1:7890 HTTP_PROXY=http://127.0.0.1:7890
 
 # 1. 抓原始表（写入 raw/，可重复运行，已存在的表会跳过）
 python tools/fetch.py raw Players,Tenures,Tournaments,Contracts,PlayerRedirects
@@ -85,22 +106,28 @@ python tools/fetch_stats.py raw CareerStats         # 逐局表在服务端聚�
 python tools/fetch_zh_names.py raw                  # 中文维基里查得到的那批选手的中文名
 python tools/verify_zh_names.py raw                 # 按名单核对通行译名（不存在或不是英雄联盟的丢弃）
 
-# 2. 压缩成插件数据（字典编码 + 差分 + gzip + base64）
+# 2. 抓图并合成两张精灵图（downloads 缓存在 raw/icons/，重跑只抓新增）
+python tools/build-icons.py raw ui/icons build
+#    TEAM_ICONS=620 控制队标数量；写入 ui/icons/*.png 与 build/icons.json、build/champions.json
+
+# 3. 压缩成插件数据（字典编码 + 差分 + 定宽二进制 + gzip + base64）
 node tools/build-data.mjs raw build
 node tools/pack-data.mjs build/dataset.json ui/data/dex.js
 
-# 3. 检查与打包
+# 4. 检查与打包
 node sdk/check.mjs .
 node --test test/*.test.mjs
 node sdk/pack.mjs .
 ```
 
-`tools/build-data.mjs` 会在结束时打印各表行数、压缩体积，以及因资格赛 / 无档案 / 重复而被丢弃的行数。
+`tools/build-data.mjs` 会在结束时打印各表行数、压缩体积，以及因资格赛 / 无档案 / 重复而被丢弃的行数，
+还有招牌英雄里没有对上 Data Dragon 的英雄名（当前为 0 个）。
 
 ### 体积预算
 
-插件包上限 4 MiB。快照压缩后 2.81 MB，base64 进 `dex.js` 是 3.75 MiB，其余约 160 KB 是页面、
-字体与 SDK；`sdk/pack.mjs` 打出的发行包 4,101,436 字节（3.91 MiB）。细节见 `docs/data-model.md`。
+插件包上限 4 MiB。快照压缩后 2.74 MB，base64 进 `dex.js` 是 3.66 MiB，两张精灵图 96 KB，
+其余约 100 KB 是页面、字体与 SDK；`sdk/pack.mjs` 打出的发行包 4,143,094 字节（3.95 MiB），
+距上限约 50 KB。细节见 `docs/data-model.md`。
 
 ## 开发预览
 

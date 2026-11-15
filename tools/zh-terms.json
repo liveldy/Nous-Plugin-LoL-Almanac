@@ -197,5 +197,295 @@
     "Bengali": "孟加拉文",
     "Khmer": "高棉文",
     "Latin": "拉丁字母"
-  }
+  },
+  "region": {
+    "Europe": "欧洲",
+    "EMEA": "EMEA",
+    "North America": "北美",
+    "Latin America": "拉美",
+    "SEA": "东南亚",
+    "Brazil": "巴西",
+    "Asia Pacific": "亚太",
+    "China": "中国",
+    "Korea": "韩国",
+    "LAS": "拉美南",
+    "LAN": "拉美北",
+    "International": "国际",
+    "Japan": "日本",
+    "Vietnam": "越南",
+    "Americas": "美洲",
+    "MENA": "中东与北非",
+    "LMS": "台港澳",
+    "CIS": "独联体",
+    "Oceania": "大洋洲",
+    "Turkey": "土耳其",
+    "Asia": "亚洲",
+    "Wildcard": "外卡",
+    "Africa": "非洲",
+    "Unknown": "未知"
+  },
+  "_league_note": "联赛名：只翻译有公认中文名或本身就是缩写的主流赛事，品牌名（Prime League、Ultraliga、Hitpoint…）保持原样。",
+  "league": {
+    "World Championship": "全球总决赛",
+    "Mid-Season Invitational": "季中冠军赛",
+    "All-Star": "全明星赛",
+    "Rift Rivals": "洲际对抗赛",
+    "Tencent LoL Pro League": "LPL",
+    "LoL Champions Korea": "LCK",
+    "LCK Challengers League": "LCK CL",
+    "Challengers Korea": "韩国挑战者联赛",
+    "LCK Academy Series": "LCK 青训系列赛",
+    "LoL Development League": "LDL",
+    "League of Legends Championship Series": "LCS",
+    "North America League Championship Series": "NA LCS",
+    "Europe League Championship Series": "EU LCS",
+    "North American Challengers League": "北美挑战者联赛",
+    "Northern League of Legends Championship": "北欧冠军联赛",
+    "LoL Continental League": "独联体 LCL",
+    "LoL Master Series": "台港澳 LMS",
+    "League of Legends Master Series": "台港澳 LMS",
+    "Pacific Championship Series": "太平洋 PCS",
+    "Vietnam Championship Series": "越南 VCS",
+    "Road to Vietnam Championship Series": "越南 VCS 晋级赛",
+    "LoL Japan League": "日本 LJL",
+    "Oceanic Pro League": "大洋洲 OPL",
+    "Circuit Brazilian League of Legends": "巴西 CBLOL",
+    "Brazilian Challenger Circuit": "巴西挑战者赛区",
+    "Liga Latinoamerica": "拉美 LLA",
+    "Liga Latinoamérica": "拉美 LLA",
+    "LoL EMEA Championship": "EMEA 冠军联赛",
+    "EU Masters": "欧洲大师赛",
+    "EMEA Masters": "EMEA 大师赛",
+    "Esports Balkan League": "巴尔干电竞联赛",
+    "Greek Legends League": "希腊传奇联赛",
+    "Turkish Championship League": "土耳其冠军联赛",
+    "League Championship Denmark": "丹麦冠军联赛",
+    "Liga Portuguesa": "葡萄牙联赛",
+    "La Ligue Française": "法国联赛",
+    "Esports Series Madrid": "马德里电竞系列赛",
+    "Intel Extreme Masters": "英特尔极限大师赛",
+    "Intel Arabian Cup": "英特尔阿拉伯杯",
+    "Circuito Nacional México": "墨西哥全国赛",
+    "Circuito Nacional Colombia": "哥伦比亚全国赛",
+    "Circuito Nacional Argentina": "阿根廷全国赛",
+    "Circuito Nacional Chile": "智利全国赛",
+    "Circuito Nacional Peru": "秘鲁全国赛",
+    "Oceanic University Championship": "大洋洲高校锦标赛",
+    "Prime League Pro Division": "Prime League 职业组"
+  },
+  "_event_note": "赛事名：按词组替换（长的先替换），品牌名和联赛专名不在此表里，替换后仍是原文；中文之间会去掉空格。",
+  "event": [
+    [
+      "Swiss",
+      "瑞士轮"
+    ],
+    [
+      "EU Masters",
+      "欧洲大师赛"
+    ],
+    [
+      "EMEA Masters",
+      "EMEA 大师赛"
+    ],
+    [
+      "KeSPA Cup",
+      "KeSPA 杯"
+    ],
+    [
+      "Regional Championship",
+      "地区锦标赛"
+    ],
+    [
+      "Qual",
+      "预选赛"
+    ],
+    [
+      "League of Legends",
+      "英雄联盟"
+    ],
+    [
+      "Mid-Season Invitational",
+      "季中冠军赛"
+    ],
+    [
+      "World Championship",
+      "全球总决赛"
+    ],
+    [
+      "Regional Finals",
+      "地区预选赛"
+    ],
+    [
+      "Regional Qualifier",
+      "地区预选赛"
+    ],
+    [
+      "Open Qualifier",
+      "公开预选赛"
+    ],
+    [
+      "Closed Qualifier",
+      "封闭预选赛"
+    ],
+    [
+      "Knockout Stage",
+      "淘汰赛"
+    ],
+    [
+      "Stage",
+      "阶段"
+    ],
+    [
+      "Group Stage",
+      "小组赛"
+    ],
+    [
+      "Play-In Stage",
+      "入围赛"
+    ],
+    [
+      "Play-In",
+      "入围赛"
+    ],
+    [
+      "Play In",
+      "入围赛"
+    ],
+    [
+      "Grand Final",
+      "总决赛"
+    ],
+    [
+      "Grand Finals",
+      "总决赛"
+    ],
+    [
+      "Championship Series",
+      "冠军联赛"
+    ],
+    [
+      "Challenger Series",
+      "挑战者联赛"
+    ],
+    [
+      "Challengers League",
+      "挑战者联赛"
+    ],
+    [
+      "Challengers",
+      "挑战者"
+    ],
+    [
+      "Pro League",
+      "职业联赛"
+    ],
+    [
+      "Academy Series",
+      "青训系列赛"
+    ],
+    [
+      "Academy",
+      "青训"
+    ],
+    [
+      "Regular Season",
+      "常规赛"
+    ],
+    [
+      "Showmatch",
+      "表演赛"
+    ],
+    [
+      "Playoffs",
+      "季后赛"
+    ],
+    [
+      "Playoff",
+      "季后赛"
+    ],
+    [
+      "Finals",
+      "决赛"
+    ],
+    [
+      "Final",
+      "决赛"
+    ],
+    [
+      "Qualifiers",
+      "预选赛"
+    ],
+    [
+      "Qualifier",
+      "预选赛"
+    ],
+    [
+      "Qualification",
+      "预选赛"
+    ],
+    [
+      "Promotion",
+      "升降级赛"
+    ],
+    [
+      "Relegations",
+      "保级赛"
+    ],
+    [
+      "Relegation",
+      "保级赛"
+    ],
+    [
+      "Preseason",
+      "季前赛"
+    ],
+    [
+      "Offseason",
+      "休赛期"
+    ],
+    [
+      "Spring",
+      "春季赛"
+    ],
+    [
+      "Summer",
+      "夏季赛"
+    ],
+    [
+      "Autumn",
+      "秋季赛"
+    ],
+    [
+      "Winter",
+      "冬季赛"
+    ],
+    [
+      "Fall",
+      "秋季赛"
+    ],
+    [
+      "Season",
+      "赛季"
+    ],
+    [
+      "Split",
+      "赛段"
+    ],
+    [
+      "University",
+      "高校"
+    ],
+    [
+      "League",
+      "联赛"
+    ],
+    [
+      "Championship",
+      "锦标赛"
+    ],
+    [
+      "Tournament",
+      "锦标赛"
+    ]
+  ]
 }

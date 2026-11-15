@@ -394,6 +394,48 @@ a { color: inherit; }
 }
 .tagon.on { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
 
+/* artwork — 两张精灵图，打包时内联成 data URL（见 tools/build-icons.py） */
+.cicon,
+.tlogo {
+  display: inline-block; flex: 0 0 auto;
+  background-repeat: no-repeat;
+  background-size: var(--cicon-w, 352px) auto;
+  border-radius: 3px;
+  align-self: center;
+}
+.cicon {
+  width: var(--cicon-size, 22px); height: var(--cicon-size, 22px);
+  background-image: url('icons/champions.png');
+}
+.tlogo {
+  width: var(--tlogo-size, 20px); height: var(--tlogo-size, 20px);
+  background-image: url('icons/teams.png');
+  background-size: var(--tlogo-w, 400px) auto;
+}
+.cicon[hidden],
+.tlogo[hidden] { display: none; }
+.row-logo {
+  width: 15px; height: 15px;
+  background-size: var(--tlogo-row-w, 300px) auto;
+  border-radius: 2px;
+}
+.dhead-name .tlogo { margin-right: 5px; vertical-align: -3px; }
+
+/* 招牌英雄 */
+.favs { display: flex; flex-wrap: wrap; gap: 8px 10px; padding-top: 6px; }
+.fav {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 5px 9px 5px 5px;
+  border: 1px solid var(--rule);
+  background: var(--raise);
+  border-radius: 3px;
+}
+.fav-name { font-size: 12.5px; color: var(--ink); white-space: nowrap; }
+.fav-title {
+  font-family: var(--mono); font-size: 10px; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--faint);
+}
+
 /* stats band */
 .band {
   margin-top: 26px;
@@ -498,12 +540,15 @@ a { color: inherit; }
 .ev-year::after { content: ''; flex: 1; height: 1px; background: var(--rule); }
 .ev-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 4px 12px;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 4px 10px;
+  align-items: center;
   padding: 6px 0;
   border-bottom: 1px solid var(--rule);
 }
+.ev-row .tlogo { grid-row: 1 / span 2; grid-column: 1; }
 .ev-name {
+  grid-column: 2;
   padding: 0;
   border: 0;
   background: none;
@@ -519,13 +564,13 @@ a { color: inherit; }
 .ev-name:hover { color: var(--accent); border-bottom-color: var(--accent); }
 .ev-name span { color: var(--muted); }
 .ev-meta {
-  grid-column: 1;
+  grid-column: 2;
   display: flex; flex-wrap: wrap; gap: 8px;
   font-family: var(--mono); font-size: 10px; letter-spacing: .06em;
   text-transform: uppercase; color: var(--faint);
 }
 .ev-right {
-  grid-row: 1 / span 2; grid-column: 2;
+  grid-row: 1 / span 2; grid-column: 3;
   font-family: var(--mono); font-size: 11px; color: var(--muted);
   white-space: nowrap;
 }

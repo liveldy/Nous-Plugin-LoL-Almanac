@@ -29,6 +29,29 @@
     throw new Error('当前运行环境不支持解压（需要 Chromium 80 及以上）');
   }
 
+  // 数字列存的是 {w:'u8|u16|u32', d:base64}，这里就地还原成定型数组；字符串列（战队名、赛事名）不动。
+  function expandColumns(D) {
+    const dec = (col) => {
+      const bin = b64bytes(col.d);
+      if (col.w === 'u8') return bin;
+      return col.w === 'u16' ? new Uint16Array(bin.buffer, 0, bin.length >> 1)
+        : new Uint32Array(bin.buffer, 0, bin.length >> 2);
+    };
+    const walk = (obj, skip) => {
+      if (!obj) return;
+      for (const k of Object.keys(obj)) {
+        if (skip && skip.includes(k)) continue;
+        const v = obj[k];
+        if (v && typeof v === 'object' && typeof v.d === 'string' && typeof v.w === 'string') obj[k] = dec(v);
+      }
+    };
+    walk(D.columns);
+    walk(D.tenures); walk(D.contracts); walk(D.tp); walk(D.stats); walk(D.aliases); walk(D.champs);
+    walk(D.tourn, ['name']);
+    walk(D.fav);
+    if (D.logo && typeof D.logo.d === 'string') D.logo = dec(D.logo);
+  }
+
   /* ── state ──────────────────────────────────────────── */
   let D, S, TEAMS, TOURNS, F;
   const state = {
@@ -66,6 +89,43 @@
   const num = (v) => (typeof v === 'number' ? v : 0);
   const fmt = (n) => (n >= 1000 ? (n / 1000).toFixed(1).replace(/\.0$/, '') + 'k' : String(n));
   const pct = (a, b) => (b > 0 ? Math.round((a / b) * 1000) / 10 : 0);
+
+  /* ── icons (sprites packed into the CSS by the bundler) ─ */
+  // 精灵图参数来自数据包；宿主 CSP 丢弃内联 style 属性，所以尺寸走自定义属性、位置走 CSSOM。
+  function setIconScale() {
+    const st = document.documentElement.style;
+    const g = D.icons || {};
+    if (g.champ) { st.setProperty('--cicon-size', g.champ.size + 'px'); st.setProperty('--cicon-w', g.champ.cols * g.champ.size + 'px'); }
+    if (g.team) {
+      st.setProperty('--tlogo-size', g.team.size + 'px');
+      st.setProperty('--tlogo-w', g.team.cols * g.team.size + 'px');
+      // 列表里的队标小一号（15px），精灵图按同比例缩放才不会错位
+      st.setProperty('--tlogo-row-w', g.team.cols * 15 + 'px');
+    }
+  }
+  const champLabel = (slot) => (slot >= 0 && D.champZh ? D.champZh[slot] || '' : '');
+  const teamLogo = (teamIdx) => (teamIdx && D.logo ? (D.logo[teamIdx] || 0) - 1 : -1);
+  function iconAt(el, kind, slot) {
+    const g = D.icons && D.icons[kind];
+    // 没有图标时占着位置但不显示：同一列里有无图标的行才会左对齐成一条线
+    if (!g || slot === null || slot === undefined || slot < 0) { el.style.visibility = 'hidden'; return; }
+    const col = slot % g.cols;
+    el.style.backgroundPosition = -col * g.size + 'px ' + -Math.floor(slot / g.cols) * g.size + 'px';
+  }
+  function paintIcons(root) {
+    for (const el of root.querySelectorAll('.cicon[data-slot]')) iconAt(el, 'champ', Number(el.dataset.slot));
+    for (const el of root.querySelectorAll('.tlogo[data-slot]')) iconAt(el, 'team', Number(el.dataset.slot));
+  }
+  const champChip = (slot, extra) => {
+    if (slot < 0) return '';
+    const title = D.champTitle ? D.champTitle[slot] || '' : '';
+    return '<span class="fav" title="' + esc((D.champEn && D.champEn[slot]) || '') + '">' +
+      '<span class="cicon" data-slot="' + slot + '"></span>' +
+      '<span class="fav-name">' + esc(champLabel(slot)) + '</span>' +
+      (title ? '<span class="fav-title">' + esc(title) + '</span>' : '') +
+      (extra || '') + '</span>';
+  };
+  const logoTip = (teamIdx) => '<span class="tlogo" data-slot="' + teamLogo(teamIdx) + '"></span>';
 
   /* ── field metadata ─────────────────────────────────── */
   const FLAG_LABELS = ['退役', '转无畏契约', '转云顶之弈', '转符文之地传奇', '转 2XKO', '内容创作者', '替补', '小写 ID', '自动战队', '低关注度'];
@@ -108,7 +168,6 @@
     ['TeamLast', '最后效力', 'team'],
     ['Contract', '合同到期', 'date'],
     ['ContractText', '合同说明', 'dict'],
-    ['FavChamps', '招牌英雄', 'list'],
     ['SoloqueueIds', '排位账号', 'text'],
     ['NameAlphabet', '文字系统', 'dict'],
     ['Deathdate', '逝世日期', 'date'],
@@ -116,7 +175,8 @@
 
   /* ── build indexes ──────────────────────────────────── */
   function build() {
-    S = D.S; TEAMS = D.teams; TOURNS = D.tournNames; F = D.fields;
+    S = D.S; TEAMS = D.teams; TOURNS = D.tourn.name; F = D.fields;
+    setIconScale();
     const cols = D.columns;
     const n = D.counts.players;
     const id = cols.ID, page = cols.OverviewPage, name = cols.Name, native = cols.NativeName,
@@ -185,6 +245,17 @@
         P.first[i] = D.stats.first[k];
         P.last[i] = D.stats.last[k];
       }
+    }
+
+    // 招牌英雄：人数数组 → 前缀和，槽位表直接用
+    if (D.fav && D.fav.n) {
+      const c = D.fav.c;
+      const from = new Int32Array(n + 1);
+      let acc = 0;
+      for (let i = 0; i < n; i++) { from[i] = acc; acc += c[i] || 0; }
+      from[n] = acc;
+      P.favFrom = from;
+      P.favSlots = D.fav.s;
     }
 
     // aliases
@@ -320,7 +391,7 @@
       flag.setAttribute('aria-hidden', 'true');
       sub.appendChild(flag);
       const bits = [P.zh[i], P.country[i], P.role[i]].filter(Boolean);
-      if (team) bits.push(team);
+      const teamSlot = teamLogo(D.columns.Team[i]);
       bits.forEach((v, idx) => {
         if (idx) {
           const dot = document.createElement('span');
@@ -332,6 +403,21 @@
         it.textContent = v;
         sub.appendChild(it);
       });
+      if (team) {
+        const dot = document.createElement('span');
+        dot.className = 'dot';
+        dot.textContent = '·';
+        sub.appendChild(dot);
+        if (teamSlot >= 0 && D.icons && D.icons.team) {
+          const logo = document.createElement('span');
+          logo.className = 'tlogo row-logo';
+          sub.appendChild(logo);
+          iconAt(logo, 'team', teamSlot);
+        }
+        const it = document.createElement('i');
+        it.textContent = team;
+        sub.appendChild(it);
+      }
       node.appendChild(sub);
 
       const right = document.createElement('span');
@@ -488,7 +574,7 @@
   }
 
   function sectionsFor(i) {
-    const out = { tenures: [], events: [], contracts: [], champs: [], aliases: [] };
+    const out = { tenures: [], events: [], contracts: [], champs: [], aliases: [], favs: [] };
     const T = D.tenures;
     for (let k = T.start[i]; k < T.start[i + 1]; k++) {
       out.tenures.push({
@@ -529,6 +615,9 @@
     }
     const al = D.aliases;
     for (let k = P.aliasFrom[i]; k < P.aliasFrom[i + 1]; k++) out.aliases.push(al.names[k]);
+    if (P.favFrom) {
+      for (let k = P.favFrom[i]; k < P.favFrom[i + 1]; k++) out.favs.push(P.favSlots[k] - 1);
+    }
     return out;
   }
 
@@ -574,7 +663,8 @@
       const next = t.next && teamName(t.next) !== teamName(t.team) ? '→ ' + teamName(t.next) : '';
       return '<div class="tl-row">' +
         '<span class="tl-date">' + dates + ' <em>—</em> <span class="' + (t.cur ? 'now' : '') + '">' + leave + '</span></span>' +
-        '<span class="tl-team"><button data-team="' + t.team + '">' + esc(teamName(t.team)) + '</button>' +
+        '<span class="tl-team">' + logoTip(t.team) +
+        '<button data-team="' + t.team + '">' + esc(teamName(t.team)) + '</button>' +
         (t.cur ? '<span class="role now">现役</span>' : '') +
         (next ? '<span class="next">' + esc(next) + '</span>' : '') + '</span>' +
         '<span class="tl-dur">' + dur + '</span>' +
@@ -604,6 +694,7 @@
       if (y !== year) { html += '<div class="ev-year">' + y + '</div>'; year = y; }
       const meta = [sv(D.tourn.league[ev.t]), sv(D.tourn.region[ev.t])].filter(Boolean);
       html += '<div class="ev-row">' +
+        logoTip(ev.team) +
         '<button class="ev-name" data-tourn="' + ev.t + '">' + esc(D.tourn.name[ev.t] || TOURNS[ev.t]) +
         (ev.team ? ' <span>· ' + esc(teamName(ev.team)) + '</span>' : '') + '</button>' +
         '<span class="ev-meta">' + meta.map((m) => '<span>' + esc(m) + '</span>').join('') + '</span>' +
@@ -626,12 +717,19 @@
         '<span class="pool-games">' + c.g + ' · ' + pct(c.w, c.g) + '%</span></div>').join('') + '</div></div>';
   }
 
+  function renderFavs(sec) {
+    if (!sec.favs.length) return '';
+    return '<div class="section">' + sectionHead('招牌英雄', sec.favs.length) +
+      '<div class="favs">' + sec.favs.map((slot) => champChip(slot)).join('') + '</div></div>';
+  }
+
   function renderContracts(sec) {
     if (!sec.contracts.length) return '';
     return '<div class="section">' + sectionHead('合同', sec.contracts.length) +
       '<div class="tl">' + sec.contracts.map((c) =>
         '<div class="tl-row"><span class="tl-date">' + (c.end ? dateStr(c.end, '.') : '未知') + '</span>' +
-        '<span class="tl-team"><button data-team="' + c.team + '">' + esc(teamName(c.team)) + '</button>' +
+        '<span class="tl-team">' + logoTip(c.team) +
+        '<button data-team="' + c.team + '">' + esc(teamName(c.team)) + '</button>' +
         (c.rm ? '<span class="next">已离队</span>' : '') + '</span><span class="tl-dur"></span></div>').join('') +
       '</div></div>';
   }
@@ -707,7 +805,7 @@
       '<div class="dhead-name">' +
       (P.name[i] ? '<span>' + esc(P.name[i]) + '</span>' : '') +
       (P.native[i] && P.native[i] !== P.zh[i] ? '<span class="native">' + esc(P.native[i]) + '</span>' : '') +
-      (P.team[i] ? '<span class="native">' + esc(P.team[i]) + '</span>' : '') +
+      (P.team[i] ? '<span class="native">' + logoTip(D.columns.Team[i]) + esc(P.team[i]) + '</span>' : '') +
       '</div>' +
       '<div class="dhead-actions">' +
       '<button class="btn" data-copy="1" aria-label="复制选手档案">' + ICON_COPY + '复制</button>' +
@@ -715,6 +813,7 @@
       '</div></div>';
 
     html += band(i, st, sec);
+    html += renderFavs(sec);
     html += renderTenures(sec, i + 't');
     html += renderEvents(sec, i + 'e');
     html += renderPool(sec);
@@ -728,6 +827,7 @@
     html += renderLinks(i);
 
     dossier.innerHTML = html;
+    paintIcons(dossier);
     // 宿主 CSP 会丢弃内联 style 属性，宽度只能通过 CSSOM 设置
     for (const bar of dossier.querySelectorAll('.pool-bar > i[data-w]')) {
       bar.style.width = bar.dataset.w + '%';
@@ -846,6 +946,7 @@
     await new Promise((r) => setTimeout(r, 0));
     D = JSON.parse(text);
     window.__DEX__ = null;
+    expandColumns(D);
     stage('建立索引', 84);
     await new Promise((r) => setTimeout(r, 0));
     build();

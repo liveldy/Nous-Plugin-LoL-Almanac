@@ -16,6 +16,19 @@
 **中文维基百科**（`zh.wikipedia.org`）—— 部分知名选手的中文名取自对应条目，经
 `tools/verify_zh_names.py` 核对（条目须存在且正文讲的是《英雄联盟》），内容以 CC BY-SA 4.0 提供。
 
+## 图像
+
+**英雄图标与中文英雄名**（173 个）—— 取自 Riot Games 的 **Data Dragon** 静态资源
+（`ddragon.leagueoflegends.com`，`zh_CN` 语言包）。英雄名、称号、图标即 `title`、`name`、
+`image.full` 三个字段，见 `tools/build-icons.py`。Riot Games 允许在非商业粉丝项目中使用
+《英雄联盟》游戏素材；英雄图标版权归 Riot Games 所有。
+
+**俱乐部队标**（526 支队伍的 `File:<Team>logo std.png` 等）—— 取自 Leaguepedia 维基文件，
+经 MediaWiki `imageinfo` 接口拿到 Fandom CDN 上的原图地址后下载，按 CC BY-SA 3.0 署名使用。
+队标是各战队的商标，此处仅用于识别俱乐部。
+
+两张图集在构建时合成、压缩成 256 色调色板 PNG，随插件包以 data URL 内联，运行时不发起任何请求。
+
 ## 字体
 
 **Newsreader** — Copyright 2020 The Newsreader Project Authors

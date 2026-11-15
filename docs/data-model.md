@@ -18,29 +18,38 @@ window.__DEX__ = "<base64(gzip(dataset))>";
 2. **日期按天编码**：`YYYY-MM-DD` 变成「1980-01-01 起的天数 + 1」，4 位数字代替 10 个字符。
 3. **按选手排序 + 差分**：每位选手的履历行连续排列，选手列存差值（大量 0），gzip 后几乎不占空间。
 4. **布尔字段并成位掩码**：`IsRetired`、`ToWildrift` 等 10 个布尔字段合成一个列 `fl`。
+5. **数字列存定宽二进制**：所有整数列在 JSON 里是 `{ w: 'u8'|'u16'|'u32', d: base64 }`，
+   页面在 `JSON.parse` 之后就地还原成 `Uint8Array` / `Uint16Array` / `Uint32Array`
+   （`ui/app.js` 的 `expandColumns()`），测试里用同样的 `expand()`。十进制文本两百万个整数约 9 MB，
+   u16 二进制只要 4 MB。
 
 ## 顶层字段
 
 | 键 | 说明 |
 | --- | --- |
 | `generatedAt` | 快照日期（ISO） |
-| `source` | 数据来源说明 |
-| `zhNamesSource` | 中文名的两个来源 |
-| `counts` | 各表行数，界面与测试都用它（`zhNames` 是带中文名的选手数） |
+| `source` / `zhNamesSource` / `iconsSource` | 数据来源说明（Cargo / 中文维基 / Data Dragon + 维基文件） |
+| `counts` | 各表行数，界面与测试都用它（`zhNames` 带中文名的选手数、`favouriteChampions` 招牌英雄条目、`teamLogos` 有队标的队伍数） |
 | `base` | 日期编码起点年份（1980） |
 | `flags` | `fl` 位掩码的字段顺序 |
 | `S` | 字符串字典，`S[0] === ''` |
 | `teams` | 战队名字典，`teams[0] === ''` |
-| `tournNames` | 赛事页面名（`Tournaments.OverviewPage`） |
 | `fields` | 选手列的编码类型表：`raw` / `dict` / `team` / `date` / `num` |
 | `columns` | 选手列，每个字段一个数组，长度等于选手数 |
 | `tenures` | 战队履历 |
 | `contracts` | 合同 |
-| `tourn` | 赛事元数据 |
+| `tourn` | 赛事元数据（`name` 是已中文化的赛事名，字符串数组；其余列是数字） |
 | `tp` | 赛事出场 |
 | `stats` | 生涯合计（`ScoreboardPlayers` 聚合） |
 | `champs` | 英雄池；当前构建为 `null`（体积不够，见 README） |
+| `fav` | 招牌英雄：`{ c, s, n }` —— `c` 是每人的数量，`s` 是连续的英雄槽位（1 起，0 = 空） |
 | `aliases` | 曾用名 → 选手下标 |
+| `icons` | 两张精灵图的网格参数：`champ` / `team` 各为 `{ cols, size, count }` |
+| `logo` | 队标槽位表，与 `teams` 等长（0 = 该队无图标，否则为槽位 + 1） |
+| `champZh` / `champEn` / `champTitle` | 按槽位排的英雄中文名、Data Dragon 键名、称号 |
+
+赛事页面名（`Tournaments.OverviewPage`）不进数据集：`tourn.name` 已经是可显示的名字，
+重复存一份页面名要多花约 58 KB 压缩体积。
 
 ## 选手列
 
@@ -90,16 +99,21 @@ n:    行数
 
 | 部分 | gzip 边际体积 |
 | --- | --- |
-| 选手列 | 971 KB |
-| 战队履历 | 685 KB |
-| 赛事 + 出场 | 528 KB |
-| 生涯数据 | 296 KB |
-| 赛事元数据 | 96 KB |
-| 曾用名 | 93 KB |
-| 战队名字典 | 77 KB |
-| 赛事页面名 | 56 KB |
-| 合同 | 48 KB |
-| 字符串字典（含 2,336 个中文名） | 30 KB |
-| **合计** | **2,879 KB（2.81 MB）** |
+| 选手列 | 944 KB |
+| 战队履历 | 657 KB |
+| 赛事出场 | 530 KB |
+| 生涯数据 | 290 KB |
+| 赛事元数据 | 99 KB |
+| 曾用名 | 95 KB |
+| 战队名字典 | 80 KB |
+| 赛事名（已中文化） | 54 KB |
+| 合同 | 50 KB |
+| 字符串字典（含 2,336 个中文名） | 29 KB |
+| 招牌英雄 | 27 KB |
+| 英雄名表（173 个中文名 + 称号） | 4 KB |
+| 队标槽位 | 2 KB |
+| **合计** | **2.74 MB** |
 
-base64 后 `dex.js` 3.75 MiB；打包成 `.nous-plugin.json` 是 4,101,436 字节（3.91 MiB），距 4 MiB 上限约 92 KB。
+base64 后 `dex.js` 3.66 MiB；打包成 `.nous-plugin.json` 是 4,143,094 字节（3.95 MiB），
+其中两张精灵图 96,650 字节（英雄图标 54,878、队标 41,772），距 4 MiB 上限约 50 KB。
+每个整数列的位宽（u8/u16/u32）按最大值自动选择，`packColumns()` 跳过含字符串的列。

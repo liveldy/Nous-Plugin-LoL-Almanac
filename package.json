@@ -1,6 +1,6 @@
 {
   "name": "nous-plugin-lol-almanac",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "type": "commonjs",
   "description": "英雄联盟职业选手图鉴 · Nous 插件。ui/ 是随包页面，sdk/ 是公开插件 SDK 的本地副本，tools/ 是数据抓取与打包脚本。",

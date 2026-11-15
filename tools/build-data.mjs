@@ -36,6 +36,29 @@ const dateEnc = (v) => {
   return Math.round((t - BASE_MS) / DAY) + 1;
 };
 const num = (v) => { const n = Number(v); return Number.isFinite(n) ? n : 0; };
+
+// 数字列一律存成定宽二进制再 base64：同样两百万个整数，十进制文本约 9 MB，u16 二进制只要 4 MB，
+// gzip 之后差距同样明显 —— 省下来的预算留给队标、选手肖像和英雄图标。
+const packInts = (arr) => {
+  let max = 0;
+  for (let i = 0; i < arr.length; i++) if (arr[i] > max) max = arr[i];
+  const w = max < 256 ? 'u8' : max < 65536 ? 'u16' : 'u32';
+  const Type = w === 'u8' ? Uint8Array : w === 'u16' ? Uint16Array : Uint32Array;
+  const typed = new Type(arr.length);
+  for (let i = 0; i < arr.length; i++) typed[i] = arr[i] || 0;
+  return { w, d: Buffer.from(typed.buffer, typed.byteOffset, typed.byteLength).toString('base64') };
+};
+// 把对象里的每个数字列就地换成 {w,d}；字符串列（战队名、赛事名、曾用名、ID 等 raw 列）原样保留
+const packColumns = (obj, skip = []) => {
+  for (const k of Object.keys(obj)) {
+    if (skip.includes(k)) continue;
+    const arr = obj[k];
+    if (!Array.isArray(arr)) continue;
+    if (arr.some((v) => typeof v === 'string')) continue;
+    obj[k] = packInts(arr);
+  }
+  return obj;
+};
 const stripProto = (v) => String(v || '').replace(/^https?:\/\//i, '').replace(/^www\./i, '').replace(/\/$/, '');
 // 少数自由文本字段里带着维基标记（'''粗体'''、<br>、[[File:…]]、&#8288;），显示前先清掉
 const cleanText = (v) => String(v || '')
@@ -68,6 +91,29 @@ const ti = (v) => {
   return i;
 };
 
+/* ---------- artwork metadata (tools/build-icons.py) ---------- */
+// 宿主 iframe 里 connect-src 是 'none'，图片只能在构建时下载好、作为 data URL 打进包里。
+// build-icons.py 把图标拼成两张精灵图，这里只记下每张图的网格参数，以及「队名 / 英雄名 → 槽位」。
+const ICON_DIR = path.resolve(process.env.ICONS_DIR || 'build');
+const readIcon = (f) => {
+  const p = path.join(ICON_DIR, f);
+  return fs.existsSync(p) ? JSON.parse(fs.readFileSync(p, 'utf8')) : null;
+};
+const iconMeta = readIcon('icons.json');
+const champMeta = (readIcon('champions.json') || []).filter((c) => c.slot >= 0).sort((a, b) => a.slot - b.slot);
+const normChamp = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+// Leaguepedia 的写法与 Data Dragon 的键偶尔对不上
+const CHAMP_ALIAS = { wukong: 'MonkeyKing', renataglasc: 'Renata', nunuwillump: 'Nunu' };
+const champSlotByName = new Map(champMeta.map((c) => [normChamp(c.key), c.slot]));
+const champSlot = (name) => {
+  const n = normChamp(name);
+  const slot = champSlotByName.get(CHAMP_ALIAS[n] !== undefined ? normChamp(CHAMP_ALIAS[n]) : n);
+  return slot === undefined ? -1 : slot;
+};
+const champZh = champMeta.map((c) => c.zh);
+const champEn = champMeta.map((c) => c.key);
+const champTitle = champMeta.map((c) => c.title || '');
+
 /* ---------- players ---------- */
 const rawPlayers = read('Players');
 const nP = rawPlayers.length;
@@ -85,6 +131,24 @@ const TERM_FIELD = {
   Residency: 'residency', ResidencyFormer: 'residency', Role: 'role', RoleLast: 'role',
   NameAlphabet: 'alphabet',
 };
+const tterm = (map, v) => {
+  const s = String(v || '').trim();
+  if (!s) return '';
+  return TERMS[map] && TERMS[map][s] !== undefined ? TERMS[map][s] : s;
+};
+// 赛事名：先去掉 <s> 删除线标记，再按词组替换（长的先替换，按词边界匹配），最后去掉中文之间的空格
+const PHRASES = (TERMS.event || []).slice().sort((a, b) => b[0].length - a[0].length)
+  .map(([from, to]) => [
+    new RegExp('(?<![A-Za-z])' + from.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?![A-Za-z])', 'gi'), to,
+  ]);
+const localizeEvent = (v) => {
+  let s = String(v || '').replace(/<\/?s>/gi, '').trim();
+  s = s.replace(/\bSeason (\d+)\b/gi, '第 $1 赛季').replace(/\bSplit (\d+)\b/gi, '第 $1 赛段')
+    .replace(/\bRounds? (\d+)([-–]\d+)?\b/gi, (m, a, b) => '第 ' + a + (b || '') + ' 轮')
+    .replace(/\bRound ([IVX]+)\b/g, '第 $1 轮');
+  for (const [rx, to] of PHRASES) s = s.replace(rx, to);
+  return s.replace(/([\u4e00-\u9fa5])\s+(?=[\u4e00-\u9fa5])/g, '$1').replace(/\s{2,}/g, ' ').trim();
+};
 // 中文名：记录本身用汉字写的，就是选手的中文名；其余来自 tools/fetch_zh_names.py 抓的维基条目
 const ZH = has('ZhNames') ? (read('ZhNames').names || {}) : {};
 const isCJK = (s) => /[\u4e00-\u9fa5]/.test(String(s || ''));
@@ -98,7 +162,8 @@ const SCALARS = {
   ID: 'raw', OverviewPage: 'raw', Name: 'raw', NativeName: 'raw', NameAlphabet: 'dict',
   Country: 'dict', Nationality: 'dict', NationalityPrimary: 'dict', Age: 'num', Birthdate: 'date',
   Deathdate: 'date', Residency: 'dict', ResidencyFormer: 'dict', Team: 'team', Team2: 'team',
-  Role: 'dict', Contract: 'date', ContractText: 'dict', FavChamps: 'raw', SoloqueueIds: 'raw',
+  Role: 'dict', Contract: 'date', ContractText: 'dict',
+  SoloqueueIds: 'raw',
   TeamLast: 'team', RoleLast: 'dict', NameZh: 'dict',
 };
 const URL_FIELDS = new Set(['Askfm', 'Bluesky', 'Discord', 'Facebook', 'Instagram', 'Lolpros', 'DEEPLOL', 'DPMLOL',
@@ -170,6 +235,23 @@ rawPlayers.forEach((p, i) => {
 });
 cols.fl = flags;
 
+/* ---------- 招牌英雄：CSR 表，槽位指向英雄精灵图 ---------- */
+// 原字段是「Riven,Fiora,Jayce」这样的字符串，6,832 名选手各存一遍很占体积；
+// 换成「每人数量 + 连续的槽位下标」两张小表，界面上就能直接画出图标与中文名。
+const favCount = new Array(nP).fill(0);
+const favSlots = [];
+const favMissing = new Set();
+rawPlayers.forEach((p, i) => {
+  const names = String(p.FavChamps || '').split(',').map((s) => s.trim()).filter(Boolean);
+  for (const name of names) {
+    const slot = champSlot(name);
+    if (slot < 0) { favMissing.add(name); continue; }
+    favSlots.push(slot + 1);
+    favCount[i]++;
+  }
+});
+const fav = { c: packInts(favCount), s: packInts(favSlots), n: favSlots.length };
+
 /* ---------- sorted per-player tables, delta-encoded player column ---------- */
 function makeTable(rows, compare, build) {
   rows.sort(compare);
@@ -232,9 +314,10 @@ const tournId = (page) => {
 if (has('Tournaments')) {
   for (const r of read('Tournaments')) {
     const id = tournId(r.OverviewPage);
-    tourn.name[id] = r.Name || r.OverviewPage;
-    tourn.league[id] = si(r.League);
-    tourn.region[id] = si(r.Region);
+    // 赛事名与联赛名走中文：俱乐部名保持原文，赛事名按词组替换，联赛名查表
+    tourn.name[id] = localizeEvent(r.Name || r.OverviewPage);
+    tourn.league[id] = si(tterm('league', r.League));
+    tourn.region[id] = si(tterm('region', r.Region));
     tourn.date[id] = dateEnc(r.DateStart || r.Date || r.DateStartFuzzy);
     tourn.level[id] = si(r.TournamentLevel);
     tourn.prize[id] = num(String(r.Prizepool || '').replace(/[^\d]/g, ''));
@@ -358,19 +441,41 @@ const dataset = {
   generatedAt: new Date().toISOString().slice(0, 10),
   source: 'Leaguepedia Cargo API (lol.fandom.com)',
   zhNamesSource: 'zh.wikipedia.org + 选手档案里的汉字本名',
+  iconsSource: 'Data Dragon (ddragon.leagueoflegends.com) + Leaguepedia wiki files',
   counts: {
-    players: nP, tenures: tenures.n, contracts: contracts.n, tournaments: tournNames.length - 1,
+    players: nP, tenures: tenures.n, contracts: contracts.n, tournaments: tourn.n,
     appearances: tp.n, stats: stats ? stats.n : 0, champions: champs ? champs.n : 0, aliases: aliases.n,
     zhNames: cols.NameZh.filter((v) => v).length,
+    favouriteChampions: fav.n, championshipIcons: champZh.length,
+    teamLogos: teams.reduce((acc, name, i) => acc + (i && iconMeta && iconMeta.teamSlots[name] !== undefined ? 1 : 0), 0),
   },
   base: BASE_YEAR,
   flags: FLAGS,
   S: DS,
   teams,
-  tournNames,
   fields: SCALARS,
-  columns: cols,
-  tenures, contracts, tourn, tp, stats, champs, aliases,
+  columns: packColumns(cols),
+  tenures: packColumns(tenures),
+  contracts: packColumns(contracts),
+  tourn: packColumns(tourn, ['name']),
+  tp: packColumns(tp),
+  stats: stats ? packColumns(stats) : null,
+  champs: champs ? packColumns(champs) : null,
+  fav,
+  aliases: packColumns(aliases, ['names']),
+  // 精灵图参数 + 槽位表：界面据此给队标和英雄图标定位，不需要再传任何图片文件名
+  icons: {
+    champ: iconMeta && iconMeta.champions
+      ? { cols: iconMeta.champions.cols, size: iconMeta.champions.size, count: iconMeta.champions.count } : null,
+    team: iconMeta && iconMeta.teams
+      ? { cols: iconMeta.teams.cols, size: iconMeta.teams.size, count: iconMeta.teams.count } : null,
+  },
+  champZh, champEn, champTitle,
+  // 队名 → 队标槽位（0 = 该队没有图标）
+  logo: packInts(teams.map((name) => {
+    const slot = name && iconMeta && iconMeta.teamSlots ? iconMeta.teamSlots[name] : undefined;
+    return slot === undefined ? 0 : slot + 1;
+  })),
 };
 
 fs.mkdirSync(out, { recursive: true });
@@ -385,5 +490,6 @@ console.log(JSON.stringify({
   base64: (gz.toString('base64').length / 1048576).toFixed(2) + ' MB',
   dropped: tp.drop || null,
   unresolvedNames: unresolved.size,
-  strings: DS.length, teams: teams.length - 1, tournaments: tournNames.length - 1,
+  favMissing: [...favMissing],
+  strings: DS.length, teams: teams.length - 1, tournaments: tourn.n,
 }, null, 1));

@@ -39,7 +39,8 @@
 <div class="statusline" id="statusline" hidden role="status"></div>
 <script>
   // 仅用于本机检查：模拟宿主的最小接口.
-  const theme = new URLSearchParams(location.search).get('theme');
+  const params = new URLSearchParams(location.search);
+  const theme = params.get('theme');
   if (theme) document.documentElement.dataset.theme = theme;
   window.NousPlugin = {
     ready: Promise.resolve({ theme: theme || 'light' }),
@@ -47,6 +48,27 @@
     request: () => Promise.reject(new Error('preview')),
     on: () => () => {},
   };
+  // ?sel=<选手 ID> 直接打开某个选手的档案（截图与人工核对用）
+  const sel = params.get('sel');
+  if (sel) {
+    const waitFor = (test, run) => {
+      const t0 = Date.now();
+      const tick = () => {
+        if (test()) return run();
+        if (Date.now() - t0 > 8000) return;
+        setTimeout(tick, 100);
+      };
+      tick();
+    };
+    // 等首页把数据解压完（#boot 隐藏）再搜索，否则启动结束时的重绘会把搜索条件覆盖掉
+    waitFor(() => document.querySelector('#boot').hidden, () => {
+      const q = document.querySelector('#q');
+      q.value = sel;
+      q.dispatchEvent(new Event('input'));
+      waitFor(() => document.querySelector('.row') && document.querySelector('#resultCount').textContent.indexOf('1 ') === 0,
+        () => { const row = document.querySelector('.row'); if (row) row.click(); });
+    });
+  }
 </script>
 <script src="../ui/data/dex.js"></script>
 <script src="../ui/app.js"></script>
